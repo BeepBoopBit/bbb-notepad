@@ -1,0 +1,11 @@
+[
+  {"name":"UTF-8 Unicode and CRLF","bytes":[72,105,32,240,159,141,137,13,10],"content":"Hi 🍉\r\n","encoding":"UTF-8","unsupported":false},
+  {"name":"UTF-8 BOM","bytes":[239,187,191,72,105],"content":"Hi","encoding":"UTF-8","unsupported":false},
+  {"name":"UTF-16 LE BOM","bytes":[255,254,72,0,105,0,13,0,10,0],"content":"Hi\r\n","encoding":"UTF-16 LE","unsupported":false},
+  {"name":"UTF-16 BE BOM","bytes":[254,255,0,72,0,105],"content":"Hi","encoding":"UTF-16 BE","unsupported":false},
+  {"name":"UTF-16 without BOM","bytes":[72,0,101,0,108,0,108,0,111,0],"content":"Hello","encoding":"UTF-16 LE","unsupported":false},
+  {"name":"legacy Windows text","bytes":[147,72,105,148,32,128],"content":"“Hi” €","encoding":"Windows-1252","unsupported":false},
+  {"name":"binary ASCII preview","bytes":[0,1,80,78,71,10,255],"content":"··PNG\n·","encoding":"ASCII preview","unsupported":true},
+  {"name":"malformed UTF-16","bytes":[255,254,0,216],"content":"�","encoding":"UTF-16 LE","unsupported":true},
+  {"name":"empty file","bytes":[],"content":"","encoding":"UTF-8","unsupported":false}
+]

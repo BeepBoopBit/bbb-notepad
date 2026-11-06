@@ -1,0 +1,10 @@
+[
+  {"name":"normal and case-insensitive keys","source":"!ENV: TOKEN=short\n!project: bbb-notes","pairs":[{"key":"ENV","value":"TOKEN=short"},{"key":"PROJECT","value":"bbb-notes"}]},
+  {"name":"nested blocks","source":"!IDEA:{\nTry x and y\n!ENV: abc\n!TASK:{\nDo z\n}\n}","pairs":[{"key":"IDEA","value":"Try x and y\n!ENV: abc\n!TASK:{\nDo z\n}"},{"key":"ENV","value":"abc"},{"key":"TASK","value":"Do z"}]},
+  {"name":"code examples and braces are literal","source":"```\n!ENV: example\n```\n!IDEA:{\n~~~js\n}\n!ENV: example\n~~~\nreal\n}","pairs":[{"key":"IDEA","value":"~~~js\n}\n!ENV: example\n~~~\nreal"}]},
+  {"name":"CRLF and Unicode values","source":"!IDEA:{\r\nこんにちは world\r\n}\r\n!ENV: xyz","pairs":[{"key":"IDEA","value":"こんにちは world"},{"key":"ENV","value":"xyz"}]},
+  {"name":"unfinished block","source":"!IDEA:{\nnot finished","pairs":[{"key":"IDEA","value":"not finished"}]},
+  {"name":"empty blocks and inline braces","source":"!IDEA:{\n}\n!ENV:\n!JSON: {key: value}","pairs":[{"key":"IDEA","value":""},{"key":"ENV","value":""},{"key":"JSON","value":"{key: value}"}]},
+  {"name":"indented code and inline examples are not pairs","source":"    !ENV: example\n`!ENV: example`\n\\!ENV: example\n!bad key: example\n!X_1-test:value:with:colons","pairs":[{"key":"X_1-TEST","value":"value:with:colons"}]},
+  {"name":"presentation script with nested idea","source":"!SCRIPT:{\nWelcome **everyone**.\n!IDEA:{\nPause for questions.\n}\n}","pairs":[{"key":"SCRIPT","value":"Welcome **everyone**.\n!IDEA:{\nPause for questions.\n}"},{"key":"IDEA","value":"Pause for questions."}]}
+]

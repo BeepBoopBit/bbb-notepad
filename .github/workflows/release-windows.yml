@@ -1,0 +1,59 @@
+name: Windows release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+  windows:
+    needs: checks
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+      - run: npm ci
+      - name: Read release metadata
+        id: metadata
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $prerelease = $version.Split('+')[0].Contains('-').ToString().ToLowerInvariant()
+          "prerelease=$prerelease" >> $env:GITHUB_OUTPUT
+      - run: npm test
+      - run: cargo test --manifest-path src-tauri/Cargo.toml --no-default-features --lib
+      - name: Verify release version
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: node scripts/release.mjs verify "$env:RELEASE_TAG"
+      - name: Configure public update feed
+        if: steps.metadata.outputs.prerelease == 'false'
+        env:
+          RELEASE_REPOSITORY: ${{ github.repository }}
+        run: node scripts/release.mjs configure "$env:RELEASE_REPOSITORY"
+      - uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: v__VERSION__
+          releaseName: bbb-notepad v__VERSION__
+          releaseBody: See the release notes for changes. Notes and settings are preserved during upgrades.
+          releaseDraft: true
+          prerelease: ${{ steps.metadata.outputs.prerelease == 'true' }}

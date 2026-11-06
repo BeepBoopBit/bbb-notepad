@@ -1,0 +1,52 @@
+{
+  "name": "bbb-notepad",
+  "version": "0.1.0-beta",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc && vite build",
+    "tauri": "tauri",
+    "test": "vitest run src scripts",
+    "test:e2e": "playwright test",
+    "release:configure": "node scripts/release.mjs configure",
+    "release:version": "node scripts/release.mjs version",
+    "release:verify": "node scripts/release.mjs verify",
+    "release:manifest": "node scripts/release.mjs manifest",
+    "release:build": "node scripts/release.mjs build",
+    "docs:check": "python scripts/checks/check-docs.py --root .",
+    "icons:generate": "node scripts/generate-icons.mjs"
+  },
+  "dependencies": {
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@codemirror/language": "^6.13.1",
+    "@codemirror/language-data": "^6.5.2",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.15",
+    "@lezer/highlight": "^1.2.5",
+    "@lezer/markdown": "^1.8.1",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-updater": "^2.14.1",
+    "dompurify": "^3.4.17",
+    "marked": "^18.1.3",
+    "mermaid": "^12.3.0",
+    "react": "^19",
+    "react-dom": "^19",
+    "turndown": "^7.2.5",
+    "turndown-plugin-gfm": "^1.0.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@tauri-apps/cli": "^2",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/turndown": "^5.0.6",
+    "@vitejs/plugin-react": "^5",
+    "typescript": "^5",
+    "vite": "^7",
+    "vitest": "^5.1.0"
+  }
+}

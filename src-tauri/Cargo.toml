@@ -1,0 +1,30 @@
+[package]
+name = "bbb-notepad"
+version = "0.1.0-beta"
+edition = "2021"
+license = "MIT"
+
+[lib]
+name = "bbb_notepad"
+
+[features]
+default = ["desktop"]
+desktop = ["dep:tauri", "dep:tauri-build", "dep:tauri-plugin-dialog", "dep:tauri-plugin-updater", "dep:tauri-plugin-single-instance"]
+
+[build-dependencies]
+tauri-build = { version = "2", optional = true }
+
+[dependencies]
+tauri = { version = "2", optional = true }
+tauri-plugin-dialog = { version = "2", optional = true }
+tauri-plugin-updater = { version = "2", optional = true }
+tauri-plugin-single-instance = { version = "2", optional = true }
+encoding_rs = "0.8"
+rusqlite = { version = "0.38", features = ["bundled", "backup"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[[bin]]
+name = "bbb-notepad"
+path = "src/main.rs"
+required-features = ["desktop"]
