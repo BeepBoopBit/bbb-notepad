@@ -1,0 +1,26 @@
+name: Publish beta update feed
+on:
+  release:
+    types: [published]
+permissions:
+  contents: write
+concurrency:
+  group: beta-update-feed
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.event.release.prerelease && startsWith(github.event.release.tag_name, 'v')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Publish signed release metadata to the beta channel
+        run: node scripts/publish-beta-feed.mjs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

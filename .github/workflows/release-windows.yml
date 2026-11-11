@@ -42,7 +42,6 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: node scripts/release.mjs verify "$env:RELEASE_TAG"
       - name: Configure public update feed
-        if: steps.metadata.outputs.prerelease == 'false'
         env:
           RELEASE_REPOSITORY: ${{ github.repository }}
         run: node scripts/release.mjs configure "$env:RELEASE_REPOSITORY"

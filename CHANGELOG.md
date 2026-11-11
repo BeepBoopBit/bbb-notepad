@@ -2,6 +2,11 @@
 
 User-visible changes to bbb-notepad. Local builds and published releases are distinguished explicitly.
 
+## 0.2.1-beta — Unreleased
+
+- Configured a permanent beta update feed for new installers, with publication automation that preserves signed versioned downloads and prevents older releases from replacing newer metadata.
+- Existing 0.1.0-beta and 0.2.0-beta installations need one manual installer upgrade to enable future in-app updates.
+
 ## 0.2.0-beta — 2026-11-11
 
 - Added a View menu with a persistent Word Wrap preference for plain and Markdown editors.

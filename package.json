@@ -1,6 +1,6 @@
 {
   "name": "bbb-notepad",
-  "version": "0.2.0-beta",
+  "version": "0.2.1-beta",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -45,6 +45,7 @@
     "@types/react-dom": "^19",
     "@types/turndown": "^5.0.6",
     "@vitejs/plugin-react": "^5",
+    "semver": "^7.8.6",
     "typescript": "^5",
     "vite": "^7",
     "vitest": "^5.1.0"

@@ -6,7 +6,7 @@ import {releaseVersion,setVersion,configureRepository,createManifest} from './re
 const root=fileURLToPath(new URL('..',import.meta.url));
 try{
   const [command,...args]=process.argv.slice(2);
-  if(command==='configure'){const repo=configureRepository(root,args[0] || '');console.log(`Update source: https://github.com/${repo}/releases/latest/download/latest.json`);}
+  if(command==='configure'){const repo=configureRepository(root,args[0] || '');console.log(`Update source configured for ${repo}.`);}
   else if(command==='version')console.log(`Version set to ${setVersion(root,args[0] || '')}`);
   else if(command==='verify'){
     const version=releaseVersion(root),tag=args[0];if(tag && tag!==`v${version}`)throw new Error(`Release tag must be v${version}.`);console.log(`bbb-notepad ${version}: versions match.`);

@@ -9,7 +9,7 @@
   A local desktop app for the notes, ideas, values, and prompts I use each day.
 </p>
 <p align="center">
-  <a href="CHANGELOG.md">Version 0.1.0-beta</a> ·
+  <a href="CHANGELOG.md">Version 0.2.1-beta (unreleased)</a> ·
   <a href="docs/development/validation.md">Windows x64 validated</a>
 </p>
 
@@ -54,8 +54,8 @@ performance have not yet been benchmarked. See [validation limits](docs/developm
 ### Windows beta
 
 If you have the Windows beta installer, run
-`bbb-notepad_0.1.0-beta_x64-setup.exe`. Then open **bbb-notepad**.
-A public download location has not been established.
+`bbb-notepad_<version>_x64-setup.exe`. Then open **bbb-notepad**.
+Download published installers from [GitHub Releases](https://github.com/BeepBoopBit/bbb-notepad/releases). The upcoming `0.2.1-beta` has not been released yet.
 To build an installer locally, follow [Releasing](RELEASING.md).
 
 | Target | Status |

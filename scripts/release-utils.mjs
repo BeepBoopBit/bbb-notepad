@@ -25,7 +25,8 @@ export function setVersion(root,input){
 }
 export function configureRepository(root,input){
   const repository=repositoryName(input),config=read(root,'src-tauri/tauri.conf.json');
-  config.plugins.updater.endpoints=[`https://github.com/${repository}/releases/latest/download/latest.json`];write(root,'src-tauri/tauri.conf.json',config);return repository;
+  const route=releaseVersion(root).split('+')[0].includes('-') ? 'download/beta-channel' : 'latest/download';
+  config.plugins.updater.endpoints=[`https://github.com/${repository}/releases/${route}/latest.json`];write(root,'src-tauri/tauri.conf.json',config);return repository;
 }
 export function createManifest(root,repository,artifacts,notes=''){
   const version=releaseVersion(root),repo=repositoryName(repository);

@@ -38,7 +38,7 @@ Choose a text file in a recognized encoding. Exporting a preview saves that prev
 
 ## Updates are not configured
 
-This is expected for the current local beta. It has no release repository or feed configured. The message does not mean the app checked a server and found no newer version.
+Older `0.1.0-beta` and `0.2.0-beta` installers have no update feed configured. Install an update-enabled release manually once. The message does not mean the app checked a server and found no newer version.
 
 A repository created later cannot automatically supply a feed address to an already-installed unconfigured build. Configure the intended release channel and rebuild before distributing an update-enabled installer. See [Releasing](../../RELEASING.md#update-channels).
 
