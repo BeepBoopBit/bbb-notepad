@@ -119,7 +119,7 @@ export class CopyController {
     }
     const id=`block:${node.from}:${node.to}`;const cached=this.known.get(id);if(cached){const unit={...cached,from:node.from,to:node.to};this.known.set(id,unit);return unit;}
     const source=this.view.state.doc.sliceString(node.from,node.to);const pair=node.name==='Pair' ? parsePairs(source)[0] : undefined;
-    const markdown=pair ? pair.key==='ENV' ? `ENV: ${ENV_MASK}` : maskedContent(source.slice(pair.valueFrom,pair.valueTo)) : maskedContent(source);
+    const markdown=pair ? pair.key==='ENV' ? `${pair.name || pair.key}: ${ENV_MASK}` : maskedContent(source.slice(pair.valueFrom,pair.valueTo)) : maskedContent(source);
     const code=node.getChild('CodeText');
     const unit:CopyUnit={id,position:node.from,ordinal:-1,parents:[],kind:code ? 'code' : 'block',markdown,text:code ? this.view.state.doc.sliceString(code.from,code.to) : plainMarkdown(markdown),from:node.from,to:node.to};
     this.known.set(id,unit);return unit;

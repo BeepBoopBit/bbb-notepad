@@ -1,8 +1,8 @@
 export const ENV_MASK = '••••••••';
-export type Pair = { key: string; from: number; to: number; valueFrom: number; valueTo: number; block: boolean; closed: boolean; parent: number | null };
+export type Pair = { key: string; name?: string; from: number; to: number; valueFrom: number; valueTo: number; block: boolean; closed: boolean; parent: number | null };
 export function pairHeader(line: string) {
-  const match = /^( {0,3})!([A-Za-z_][A-Za-z0-9_-]*):[ \t]*(.*)$/.exec(line);
-  return match ? {key:match[2].toUpperCase(), value:match[3], valueOffset:line.length-match[3].length, keyOffset:match[1].length+1} : null;
+  const match = /^( {0,3})!([A-Za-z_][A-Za-z0-9_-]*)(?:\(([^()\r\n]*)\))?:[ \t]*(.*)$/.exec(line);
+  return match ? {key:match[2].toUpperCase(), name:match[3]?.trim() || undefined, value:match[4], valueOffset:line.length-match[4].length, keyOffset:match[1].length+1} : null;
 }
 export type Fence = {char:string; size:number} | null;
 export function nextFence(line: string, fence: Fence): Fence {
@@ -25,7 +25,7 @@ export function parsePairs(source: string): Pair[] {
       if (header) {
         const block = header.value === '{';
         const valueFrom = block ? Math.min(source.length,offset+raw.length+1) : offset+header.valueOffset;
-        pairs.push({key:header.key,from:offset,to:block ? source.length : offset+line.length,valueFrom,valueTo:block ? source.length : offset+line.length,block,closed:!block,parent:stack.at(-1) ?? null});
+        pairs.push({key:header.key,name:header.name,from:offset,to:block ? source.length : offset+line.length,valueFrom,valueTo:block ? source.length : offset+line.length,block,closed:!block,parent:stack.at(-1) ?? null});
         if (block) stack.push(pairs.length-1);
       }
     }
@@ -61,13 +61,14 @@ export function pairCompletion(source: string, from: number, to: number, key: st
   const start = source.lastIndexOf('\n',from-1)+1;
   const end = source.indexOf('\n',from); const lineEnd = end < 0 ? source.length : end;
   const before = source.slice(start,from); const after = source.slice(from,lineEnd);
-  if (key === '{' && /^ {0,3}![A-Za-z_][A-Za-z0-9_-]*:[ \t]*$/.test(before) && !after.trim()) return {insert:'{}',head:from+1};
-  if (key === 'Enter' && /^ {0,3}![A-Za-z_][A-Za-z0-9_-]*:[ \t]*{$/.test(before) && after.trim() === '}') {
+  const header=pairHeader(before);
+  if (key === '{' && header?.value === '' && !after.trim()) return {insert:'{}',head:from+1};
+  if (key === 'Enter' && header?.value === '{' && after.trim() === '}') {
     const indent = /^ */.exec(before)![0]; const newline = source.includes('\r\n') ? '\r\n' : '\n';
     return {insert:newline+indent+newline+indent,head:from+newline.length+indent.length};
   }
   // Skip an existing auto-inserted closing brace rather than duplicating it.
-  if (key === '}' && after.startsWith('}') && /^ {0,3}![A-Za-z_][A-Za-z0-9_-]*:[ \t]*{$/.test(before)) return {insert:'',head:from+1};
+  if (key === '}' && after.startsWith('}') && header?.value === '{') return {insert:'',head:from+1};
   return null;
 }
 

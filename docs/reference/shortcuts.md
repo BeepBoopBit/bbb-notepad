@@ -14,6 +14,7 @@ Ctrl/Cmd means Ctrl on Windows/Linux or Command on macOS. macOS shortcuts need n
 | Up/Down, then Enter in search | Select and open a result |
 | Ctrl/Cmd+O | Open a file as text |
 | Ctrl/Cmd+S | Save note as a file |
+| Ctrl/Cmd+Shift+S | Save notes inside bbb-notes immediately, without writing an external file |
 | Ctrl/Cmd+scroll | Change editor zoom |
 | Ctrl/Cmd+0 | Reset zoom to 100% |
 

@@ -7,6 +7,24 @@ async function setup(page:Page,text=source) {
 }
 async function clipboard(page:Page) {return page.evaluate(()=>navigator.clipboard.readText());}
 
+test('Shift-click on a checklist checkbox collects the whole row',async({page})=>{
+  const text='- [ ] First **task**. More details.\n- [x] Finished task.\n\nLast';
+  await setup(page,text);
+  const row=page.locator('.markdown-block li').filter({hasText:'First task.'});
+  const checkbox=await row.locator('input').boundingBox();
+  expect(checkbox).not.toBeNull();
+  await page.keyboard.down('Shift');
+  await page.mouse.click(checkbox!.x+checkbox!.width/2,checkbox!.y+checkbox!.height/2);
+  await page.keyboard.up('Shift');
+  await expect(row).toHaveClass(/copy-selected/);
+  await expect(page.locator('li.copy-selected')).toHaveCount(1);
+  await page.getByRole('button',{name:'Copy selected Markdown'}).click();
+  await expect.poll(()=>clipboard(page)).toMatch(/^-\s+\[ \]\s+First \*\*task\*\*\. More details\.$/);
+  await page.getByRole('button',{name:'Copy selected plain text'}).click();
+  await expect.poll(()=>clipboard(page)).toBe('First task. More details.');
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('bbb-notes-preview-v1')!).notes[0].content)).toBe(text);
+});
+
 test('Shift-click collects individual sentences in document order and copies Markdown or plain text',async({page})=>{
   await setup(page);
   const first=page.locator('.copy-sentence').filter({hasText:'First important sentence.'});

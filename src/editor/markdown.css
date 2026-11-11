@@ -7,7 +7,9 @@
 .markdown-block p{margin:8px 0}.markdown-block strong{color:#f2f2f2}.markdown-block em{color:#d5d5d5}
 .markdown-block a{color:#a5d8f3;text-decoration:underline;text-underline-offset:3px}
 .markdown-block blockquote{border-left:3px solid #8b8b8b;margin:8px 0;padding:2px 18px;color:#b5b5b5}
-.markdown-block ul,.markdown-block ol{padding-left:26px;margin:8px 0}.markdown-block li{margin:3px 0}.markdown-block li input{margin-right:8px;accent-color:#d1d1d1}
+.markdown-block ul,.markdown-block ol{padding-left:26px;margin:8px 0}.markdown-block li{margin:3px 0}
+.markdown-block li:has(>input[type=checkbox]),.markdown-block li:has(>p:first-child>input[type=checkbox]){list-style-type:none}
+.markdown-block li input[type=checkbox]{width:18px;height:18px;margin:0 8px 0 0;vertical-align:middle;accent-color:#d1d1d1;pointer-events:none}
 .markdown-block code{font:13px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;background:#2b2b2b;border-radius:4px;padding:2px 5px}
 .markdown-block pre{white-space:pre;overflow:auto;background:#232323;border:1px solid #3e3e3e;border-radius:8px;padding:14px 16px;margin:8px 0;tab-size:2}
 .markdown-block pre code{padding:0;border-radius:0;background:transparent}

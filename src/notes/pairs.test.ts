@@ -61,3 +61,14 @@ test('callout exits create a line after the brace without changing existing text
   expect(followed.slice(0,plan.from)+plan.insert+followed.slice(plan.from)).toBe('!IDEA:{\nInside\n}\n\nFollowing');
   expect(pairExit('Normal text',3)).toBeNull();
 });
+
+test('named pairs preserve names, mask values, and complete braces',()=>{
+  const source='!ENV( API token ): secret';
+  expect(parsePairs(source)[0]).toMatchObject({key:'ENV',name:'API token',valueFrom:source.indexOf('secret')});
+  expect(maskedContent(source)).toBe('!ENV( API token ): ••••••••');
+  expect(matchesSearch(source,'pair:ENV secret')).toBe(true);
+  const header='!SCRIPT(Introduction):';
+  expect(pairCompletion(header,header.length,header.length,'{')).toEqual({insert:'{}',head:header.length+1});
+  expect(pairCompletion(header+'{}',header.length+1,header.length+1,'Enter')).toEqual({insert:'\n\n',head:header.length+2});
+  expect(parsePairs('!ENV(): x')[0].name).toBeUndefined();
+});

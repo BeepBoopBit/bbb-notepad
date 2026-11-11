@@ -6,5 +6,7 @@
   {"name":"unfinished block","source":"!IDEA:{\nnot finished","pairs":[{"key":"IDEA","value":"not finished"}]},
   {"name":"empty blocks and inline braces","source":"!IDEA:{\n}\n!ENV:\n!JSON: {key: value}","pairs":[{"key":"IDEA","value":""},{"key":"ENV","value":""},{"key":"JSON","value":"{key: value}"}]},
   {"name":"indented code and inline examples are not pairs","source":"    !ENV: example\n`!ENV: example`\n\\!ENV: example\n!bad key: example\n!X_1-test:value:with:colons","pairs":[{"key":"X_1-TEST","value":"value:with:colons"}]},
-  {"name":"presentation script with nested idea","source":"!SCRIPT:{\nWelcome **everyone**.\n!IDEA:{\nPause for questions.\n}\n}","pairs":[{"key":"SCRIPT","value":"Welcome **everyone**.\n!IDEA:{\nPause for questions.\n}"},{"key":"IDEA","value":"Pause for questions."}]}
+  {"name":"presentation script with nested idea","source":"!SCRIPT:{\nWelcome **everyone**.\n!IDEA:{\nPause for questions.\n}\n}","pairs":[{"key":"SCRIPT","value":"Welcome **everyone**.\n!IDEA:{\nPause for questions.\n}"},{"key":"IDEA","value":"Pause for questions."}]},
+  {"name":"named pairs retain types with Unicode and colons in names","source":"!ENV( API: token 🔑 ): secret\n!SCRIPT(Introduction):{\nHello\n!IDEA(Next step): Try this\n}","pairs":[{"key":"ENV","value":"secret"},{"key":"SCRIPT","value":"Hello\n!IDEA(Next step): Try this"},{"key":"IDEA","value":"Try this"}]},
+  {"name":"malformed names are literal","source":"!ENV(unclosed: secret\n!ENV(a(b)): secret\n!ENV(name) : secret","pairs":[]}
 ]

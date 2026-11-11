@@ -33,7 +33,7 @@ impl Store {
             INSERT INTO notes_fts(notes_fts,rowid,content) VALUES('delete',old.rowid,old.content);
             INSERT INTO notes_fts(rowid,content) VALUES(new.rowid,new.content); END;")?;
         let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
-        if version < 1 {
+        if version < 2 {
             let tx = conn.unchecked_transaction()?;
             let notes: Vec<(String, String)> = {
                 let mut stmt = tx.prepare("SELECT id,content FROM notes")?;
@@ -49,7 +49,7 @@ impl Store {
                     )?;
                 }
             }
-            tx.pragma_update(None, "user_version", 1)?;
+            tx.pragma_update(None, "user_version", 2)?;
             tx.commit()?;
         }
         Ok(Self { conn })
@@ -236,8 +236,12 @@ mod tests {
         let store = Store::open(&path).unwrap();
         assert_eq!(store.search("pair:IDEA existing").unwrap().len(), 1);
         drop(store);
+        let old = Connection::open(&path).unwrap();
+        old.execute_batch("INSERT INTO notes VALUES('named','!ENV(API token): upgrade-secret',2); PRAGMA user_version=1;").unwrap();
+        drop(old);
         let store = Store::open(&path).unwrap();
         assert_eq!(store.search("pair:IDEA").unwrap().len(), 1);
+        assert_eq!(store.search("pair:ENV upgrade-secret").unwrap().len(), 1);
         drop(store);
         std::fs::remove_file(path).unwrap();
     }

@@ -2,8 +2,13 @@
 
 User-visible changes to bbb-notepad. Local builds and published releases are distinguished explicitly.
 
-## Unreleased
+## 0.2.0-beta — 2026-11-11
 
+- Added a View menu with a persistent Word Wrap preference for plain and Markdown editors.
+- Improved rendered checklist appearance and Shift-click collection of whole checklist rows.
+- Added optional pair names, such as `!ENV(API token):` and `!SCRIPT(Introduction):`, shown in place of the type label while preserving masking, styling, and type-based search.
+- Added automatic list continuation on Enter for numbered lists and `-`, `*`, and `+` bullets, with following numbers updated when inserting an item. Enter on an empty item moves up one nesting level at a time, then exits the list; Shift+Enter inserts a plain newline.
+- Added Ctrl/Cmd+Shift+S to save immediately inside bbb-notes without creating or overwriting an external file. Ctrl/Cmd+S keeps the existing file-save dialog.
 - Improved small-icon downsampling to reduce jagged taskbar edges while preserving the original artwork.
 - CI checks now run on PRs targeting `main` and pushes to `main`.
 - Signed Windows installer builds and draft releases run only on matching version-tag pushes, after all checks pass.

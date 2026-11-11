@@ -12,6 +12,7 @@ import { Settings,SettingsMenu } from '../settings/Settings';
 import { savedTheme,savedZoom,persistPreference,clampZoom,type Theme } from '../settings/preferences';
 import { decodeFile,openDesktopFile,saveTextFile,fileName,MAX_FILE_BYTES,type OpenedFile } from '../files/files';
 import { FileMenu } from '../files/FileMenu';
+import { ViewMenu } from '../files/ViewMenu';
 import { plainBlockBreak } from '../editor/plain-block-break';
 import type { EditorPosition, NoteEditorHandle } from '../editor/editor-types';
 import { pairCompletion,pairSuggestions,completePair,pairExit, searchMatch,parsePairs,nextFence,type Fence } from '../notes/pairs';
@@ -41,6 +42,7 @@ export default function App() {
   const editor = useRef<HTMLTextAreaElement>(null);
   const markdownEditor = useRef<NoteEditorHandle>(null);
   const [renderMarkdown, setRenderMarkdown] = useState(savedRenderPreference);
+  const [wordWrap,setWordWrap]=useState(()=>{try{return localStorage.getItem('bbb-notes-word-wrap')!=='false';}catch{return true;}});
   const [richEnabled, setRichEnabled] = useState(renderMarkdown);
   const [richComponent,setRichComponent]=useState(()=>loadedMarkdownEditor);
   const pendingCommand=useRef<'collapse'|'expand'|undefined>(undefined);
@@ -114,7 +116,7 @@ export default function App() {
   useEffect(()=>{
     if(richEnabled || !active)return;
     const element=editor.current;
-    if((/^ {0,3}![A-Za-z_][A-Za-z0-9_-]*:/m.test(active.content) && parsePairs(active.content).length) || (element && pairSuggestions(element.value,element.selectionStart,element.selectionEnd))) {
+    if(parsePairs(active.content).length || (element && pairSuggestions(element.value,element.selectionStart,element.selectionEnd))) {
       let cancelled=false;
       void loadMarkdownEditor().then(module=>{if(cancelled)return;remember();setRichComponent(()=>module.default);setRichEnabled(true);});
       return()=>{cancelled=true;};
@@ -221,7 +223,11 @@ export default function App() {
       if(mod && !event.altKey && ['n','t','o','s','0','k','w'].includes(event.key.toLowerCase()))event.stopPropagation();
       if (mod && !event.altKey && ['n','t'].includes(event.key.toLowerCase())) { event.preventDefault(); create(); }
       if(mod && event.key.toLowerCase()==='o'){event.preventDefault();void fileActions.current.openFile();}
-      if(mod && event.key.toLowerCase()==='s'){event.preventDefault();void fileActions.current.saveAs();}
+      if(mod && event.key.toLowerCase()==='s'){
+        event.preventDefault();
+        if(event.shiftKey)void flush().catch(()=>{});
+        else void fileActions.current.saveAs();
+      }
       if(mod && event.key==='0'){event.preventDefault();setZoom(100);}
       if (mod && event.key.toLowerCase() === 'k') { event.preventDefault(); setSearching(v => !v); }
       if (mod && event.key.toLowerCase() === 'w' && current.current.active) { event.preventDefault(); close(current.current.active); }
@@ -311,12 +317,13 @@ export default function App() {
     <input ref={fileInput} className="sr-only" type="file" tabIndex={-1} aria-label="Choose file to open" onChange={event=>void browserFile(event.target.files?.[0])}/>
     <section inert={installing} className="editor"><div ref={toolbar} className="note-heading" role="toolbar" aria-label="Note actions">
       <FileMenu ready={ready} busy={fileBusy} modifier={modifier} onNew={create} onOpen={()=>void openFile()} onSave={()=>void saveAs()}/>
+      <ViewMenu ready={ready} wordWrap={wordWrap} onToggle={()=>{setWordWrap(!wordWrap);persistPreference('word-wrap',String(!wordWrap));}}/>
       <button className="icon-button render-toggle" disabled={!ready} aria-label="Render Markdown" title={renderMarkdown ? 'Turn Markdown rendering off' : 'Turn Markdown rendering on'} aria-pressed={renderMarkdown} onClick={toggleMarkdown}><Icon name="markdown"/></button>
       <SettingsMenu disabled={!ready || fileBusy || installing} onOpen={()=>setSettingsOpen(true)} onUpdates={()=>{setSettingsOpen(false);setSearching(false);setUpdateOpen(true);}}/>
     </div>
     {active && fileInfo[active.id]?.unsupported && <div className="file-notice" role="status">File unsupported as text. Showing a readable ASCII preview or recovered text{fileInfo[active.id].truncated ? ' (first 64 KiB)' : ''}. Saving exports this displayed text.</div>}
     <span className="sr-only" role="status">{fileStatus}</span>
-      {active && (richEnabled ? <Suspense fallback={<p className="editor-loading" role="status">Loading Markdown editor…</p>}><RichEditor key={active.id} noteId={active.id} initialCommand={pendingCommand.current} onRenderRequested={()=>{setRenderMarkdown(true);try{localStorage.setItem('bbb-notes-render-markdown','true');}catch{ /* Session preference remains available. */ }}} ref={markdownEditor} content={active.content} render={renderMarkdown} theme={theme} zoom={zoom} onChange={editContent} initialPosition={positions.current.get(active.id)} initialMatch={pendingMatch.current}/></Suspense> : <textarea key={active.id} ref={editor} aria-label="Note content" spellCheck={false} placeholder="Paste something. Catch a thought.\nIt’ll be here when you come back." value={active.content} onKeyDown={completePlainPair} onChange={e => editContent(e.target.value)}/>)}
+      {active && (richEnabled ? <Suspense fallback={<p className="editor-loading" role="status">Loading Markdown editor…</p>}><RichEditor key={active.id} noteId={active.id} initialCommand={pendingCommand.current} onRenderRequested={()=>{setRenderMarkdown(true);try{localStorage.setItem('bbb-notes-render-markdown','true');}catch{ /* Session preference remains available. */ }}} ref={markdownEditor} content={active.content} wordWrap={wordWrap} render={renderMarkdown} theme={theme} zoom={zoom} onChange={editContent} initialPosition={positions.current.get(active.id)} initialMatch={pendingMatch.current}/></Suspense> : <textarea key={active.id} ref={editor} wrap={wordWrap ? 'soft' : 'off'} style={{whiteSpace:wordWrap ? 'pre-wrap' : 'pre',overflowWrap:wordWrap ? 'anywhere' : 'normal'}} aria-label="Note content" spellCheck={false} placeholder="Paste something. Catch a thought.\nIt’ll be here when you come back." value={active.content} onKeyDown={completePlainPair} onChange={e => editContent(e.target.value)}/>)}
     </section>
     <footer><span className={error ? 'failed' : ''}><i/> {status}</span><span>{active?.content.length.toLocaleString() || 0} characters · {data.tabs.length} open {data.tabs.length === 1 ? 'note' : 'notes'}</span><span><button className="zoom-reset" title="Reset editor zoom (Ctrl+0)" aria-label="Reset editor zoom" onClick={()=>setZoom(100)}>{zoom}%</button> · {modifier}+N / T new · {modifier}+K search</span></footer>
     {updateOpen && <UpdateDialog onClose={closeUpdates} beforeInstall={beforeInstall} onFailure={installFailed}/>}

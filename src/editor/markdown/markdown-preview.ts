@@ -46,7 +46,7 @@ class MarkdownWidget extends WidgetType {
     const dom = document.createElement('div');
     dom.className = 'markdown-block'+(this.styledPair ? ` pair-body-preview pair-body-${this.styledPair.toLowerCase()}` : ''); dom.tabIndex = 0;
     const pair = pairHeader(this.source.split('\n',1)[0]);
-    dom.setAttribute('role', pair ? 'group' : 'button'); dom.setAttribute('aria-label', pair ? `${pair.key} pair` : 'Edit Markdown block');
+    dom.setAttribute('role', pair ? 'group' : 'button'); dom.setAttribute('aria-label', pair ? `${pair.name || pair.key} pair` : 'Edit Markdown block');
     const edit = (offset = 0,raw=false) => {
       const parsed=pair ? parsePairs(this.source)[0] : undefined;
       if(parsed && !raw && offset<parsed.valueFrom)offset=parsed.valueFrom;

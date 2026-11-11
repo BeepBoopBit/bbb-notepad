@@ -5,6 +5,7 @@ Collect complete sentences or blocks without positioning a normal text selection
 ## Collect sentences and blocks
 
 - Shift+click a rendered sentence to collect it. Shift+click more units to add them, or click a collected unit again with Shift to remove it.
+- Shift+click a checklist's checkbox or text to collect its entire row.
 - Shift+drag to collect a continuous range. Drag near the editor edge to scroll.
 - Use a block's **Select whole block** grip to collect the complete block.
 

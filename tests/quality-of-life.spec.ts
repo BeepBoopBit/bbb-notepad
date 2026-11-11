@@ -21,12 +21,13 @@ test('File is leftmost, Markdown and Settings are on the right, and Copy note is
   await page.goto('/');const tools=page.getByRole('toolbar',{name:'Note actions'});
   await expect(page.getByRole('button',{name:'Copy entire note'})).toHaveCount(0);
   await expect(page.locator('.titlebar').getByRole('button',{name:'Settings',exact:true})).toHaveCount(0);
-  await expect(tools.getByRole('button')).toHaveCount(3);
+  await expect(tools.getByRole('button')).toHaveCount(4);
   await expect(tools.getByRole('button').nth(0)).toHaveText('File');
-  await expect(tools.getByRole('button').nth(1)).toHaveAttribute('aria-label','Render Markdown');
-  await expect(tools.getByRole('button').nth(2)).toHaveAttribute('aria-label','Settings');
+  await expect(tools.getByRole('button').nth(1)).toHaveText('View');
+  await expect(tools.getByRole('button').nth(2)).toHaveAttribute('aria-label','Render Markdown');
+  await expect(tools.getByRole('button').nth(3)).toHaveAttribute('aria-label','Settings');
   await expect(tools.getByRole('button',{name:'Render Markdown'})).toHaveAttribute('aria-pressed','false');
-  await expect(tools).toHaveText('File');
+  await expect(tools).toHaveText('FileView');
   await expect(page.getByText('SOURCE',{exact:true})).toHaveCount(0);
   await expect(page.getByText('No filename. No save button. Just capture.',{exact:true})).toHaveCount(0);
 });
@@ -88,6 +89,27 @@ test('keyboard open and save use the file controls without editing the note',asy
   await page.locator('.cm-content').press('Control+End');await page.keyboard.press('Control+s');
   await expect(page.getByRole('dialog',{name:'Save note as'})).toBeVisible();await page.getByRole('button',{name:'Cancel',exact:true}).click();
   const notes=await saved(page);expect(notes.some((note:{content:string})=>note.content==='Keep this')).toBe(true);expect(notes.some((note:{content:string})=>note.content==='Opened')).toBe(true);
+});
+
+for(const imported of [false,true])test(`Ctrl+Shift+S immediately saves ${imported ? 'an imported' : 'a new'} note internally without exporting`,async({page})=>{
+  await page.goto('/');
+  await expect(page.getByRole('textbox',{name:'Note content'})).toBeVisible();
+  if(imported)await upload(page,'original.txt',Buffer.from('Original file content'));
+  await saved(page);
+  // Stop the autosave timer so persistence must come from the shortcut.
+  await page.clock.install();
+  await page.clock.pauseAt(new Date(Date.now()+1000));
+  let downloads=0;page.on('download',()=>downloads++);
+  const editor=page.getByRole('textbox',{name:'Note content'});
+  await editor.fill('Saved internally by shortcut');
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('bbb-notes-preview-v1')!).notes.some((note:{content:string})=>note.content==='Saved internally by shortcut'))).toBe(false);
+  await page.keyboard.press('Control+Shift+s');
+  await expect(page.getByRole('dialog',{name:'Save note as'})).toHaveCount(0);
+  expect((await saved(page)).some((note:{content:string})=>note.content==='Saved internally by shortcut')).toBe(true);
+  expect(downloads).toBe(0);
+  if(imported)await expect(page.locator('.tab-title').last()).toHaveText('original.txt');
+  await page.reload();
+  await expect(page.getByRole('textbox',{name:'Note content'})).toHaveValue('Saved internally by shortcut');
 });
 
 test('Escape still closes search and returns focus to the editor',async({page})=>{

@@ -14,12 +14,22 @@ fn header(line: &str) -> Option<(String, usize)> {
         return None;
     }
     let text = line.get(spaces..)?.strip_prefix('!')?;
-    let (key, _) = text.split_once(':')?;
+    let key_end = text.find(['(', ':'])?;
+    let key = &text[..key_end];
+    let rest = &text[key_end..];
+    let value_text = if let Some(named) = rest.strip_prefix('(') {
+        let end = named.find(')')?;
+        if named[..end].contains(['(', '\r', '\n']) {
+            return None;
+        }
+        named[end + 1..].strip_prefix(':')?
+    } else {
+        rest.strip_prefix(':')?
+    };
     if !valid_key(key) {
         return None;
     }
-    let start = spaces + 1 + key.len() + 1;
-    let value = line[start..].trim_start_matches([' ', '\t']);
+    let value = value_text.trim_start_matches([' ', '\t']);
     Some((key.to_ascii_uppercase(), line.len() - value.len()))
 }
 fn valid_key(key: &str) -> bool {

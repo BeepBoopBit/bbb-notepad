@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
-import { EditorState } from '@codemirror/state';
+import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, keymap, placeholder, drawSelection } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { bracketMatching, syntaxHighlighting } from '@codemirror/language';
@@ -25,6 +25,7 @@ type Props = {
   noteId:string;
   theme:'light'|'dark';
   zoom:number;
+  wordWrap:boolean;
   initialCommand?:'collapse'|'expand';
   onRenderRequested():void;
   content: string;
@@ -46,6 +47,7 @@ const theme = EditorView.theme({
 }, {dark:true});
 
 export default forwardRef<NoteEditorHandle, Props>(function MarkdownEditor(props, ref) {
+  const wrapping=useRef(new Compartment());
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const copying=useRef<CopyController|null>(null);
@@ -84,7 +86,7 @@ export default forwardRef<NoteEditorHandle, Props>(function MarkdownEditor(props
         EditorState.lineSeparator.of(props.content.includes('\r\n') ? '\r\n' : '\n'),
         heldPreviewSelection, previewTheme.init(()=>props.theme), slashCommands, outlineState.init(()=>({collapsed:new Set(collapsedNotes.get(props.noteId)),rawPairs:new Set()})), history(), drawSelection(), pairSuggestionEditing, pairEditing, blockEditing, markdownNavigation, keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
         markdown({ codeLanguages: languages, extensions: [GFM,pairMarkdown], pasteURLAsLink: false }), bracketMatching(), syntaxHighlighting(classHighlighter),
-        placeholder('Paste something. Catch a thought.'), EditorView.lineWrapping, theme,
+        placeholder('Paste something. Catch a thought.'), wrapping.current.of(props.wordWrap ? EditorView.lineWrapping : []), theme,
         EditorView.contentAttributes.of({'aria-label':'Note content', spellcheck:'false'}),
         markdownRendering.init(()=>props.render), livePreview,
         EditorView.updateListener.of(update => {
@@ -108,6 +110,7 @@ export default forwardRef<NoteEditorHandle, Props>(function MarkdownEditor(props
     editor.focus();
   }, [props.render]);
   useEffect(()=>{view.current?.dispatch({effects:setPreviewTheme.of(props.theme)});},[props.theme]);
+  useEffect(()=>{view.current?.dispatch({effects:wrapping.current.reconfigure(props.wordWrap ? EditorView.lineWrapping : [])});},[props.wordWrap]);
   useEffect(()=>{view.current?.requestMeasure();},[props.zoom]);
   return <div className={`markdown-editor ${props.render ? 'live-preview' : 'source-view'}`}>
     <div className="markdown-editor-host" ref={host}/>

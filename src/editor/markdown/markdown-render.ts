@@ -135,12 +135,12 @@ function appendPair(container: HTMLElement, pair: Pair, source: string, offset: 
   card.className = `pair pair-${pair.key === 'ENV' ? 'env' : pair.key === 'IDEA' ? 'idea' : pair.key === 'SCRIPT' ? 'script' : 'generic'}`;
   card.dataset.pairKey = pair.key; card.dataset.sourceOffset = String(offset+pair.from); card.dataset.sourceEnd=String(offset+pair.to);
   const header = document.createElement('div'); header.className = 'pair-header';
-  const label = document.createElement('strong'); label.className = 'pair-label'; label.textContent = pair.key;
+  const label = document.createElement('strong'); label.className = 'pair-label'; label.textContent = pair.name || pair.key;
   header.append(label);
   const value = document.createElement('div'); value.className = 'pair-value';
   value.dataset.sourceOffset = String(offset+pair.valueFrom); value.dataset.sourceEnd=String(offset+pair.valueTo);
   const text = source.slice(pair.valueFrom,pair.valueTo);
-  setCopyPayload(card,{markdown:pair.key === 'ENV' ? `ENV: ${ENV_MASK}` : maskedContent(text),text:pair.key === 'ENV' ? `ENV: ${ENV_MASK}` : undefined,direct:pair.key === 'ENV' ? text : undefined});
+  setCopyPayload(card,{markdown:pair.key === 'ENV' ? `${pair.name || pair.key}: ${ENV_MASK}` : maskedContent(text),text:pair.key === 'ENV' ? `${pair.name || pair.key}: ${ENV_MASK}` : undefined,direct:pair.key === 'ENV' ? text : undefined});
   if (pair.key === 'ENV') {
     let revealed = false;
     value.textContent = ENV_MASK; value.classList.add('pair-secret');
@@ -154,7 +154,7 @@ function appendPair(container: HTMLElement, pair: Pair, source: string, offset: 
     refresh();
     eye.addEventListener('mousedown',event => event.stopPropagation());
     eye.addEventListener('click',event => {event.stopPropagation(); revealed = !revealed; refresh(); card.dispatchEvent(new Event('pair-resize',{bubbles:true}));});
-    label.textContent = 'ENV:';
+    label.textContent = `${pair.name || pair.key}:`;
     const copy=document.createElement('button'); copy.type='button';copy.className='pair-copy';copy.innerHTML=copyIcon;
     copy.setAttribute('aria-label','Copy ENV value');copy.title='Copy value';
     copy.addEventListener('mousedown',event=>{event.preventDefault();event.stopPropagation();});
@@ -168,6 +168,6 @@ function appendPair(container: HTMLElement, pair: Pair, source: string, offset: 
   } else if (pair.block || pair.key === 'IDEA' || pair.key === 'SCRIPT') appendContent(value,text,offset+pair.valueFrom,depth+1,renderMarkdown);
   else value.textContent = text;
   const edit = document.createElement('button'); edit.className = 'pair-edit'; edit.type = 'button';
-  edit.textContent = 'Edit'; edit.setAttribute('aria-label',`Edit ${pair.key} pair`); edit.dataset.editOffset = String(offset+pair.from);
+  edit.textContent = 'Edit'; edit.setAttribute('aria-label',`Edit ${pair.name || pair.key} pair`); edit.dataset.editOffset = String(offset+pair.from);
   header.append(edit); card.append(header,value); container.append(card);
 }

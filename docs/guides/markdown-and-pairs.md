@@ -6,7 +6,11 @@ Use optional Markdown presentation and always-visible pairs to organize a note w
 
 Click **Render Markdown** in the action row. With rendering enabled, headings, emphasis, lists, tables, code, and diagrams display in place. The active Markdown block exposes its editable source.
 
+Choose **View → Word Wrap** to toggle line wrapping in either editor. The preference is remembered across restarts.
+
 Turning Markdown off leaves ordinary Markdown syntax literal. Pairs still display their styles, disclosure arrows, and ENV masking. The toggle does not turn pairs off.
+
+Write checklist items as `- [ ] Task` or `- [x] Done` (`*` also works as the list marker). Rendered checklists show larger checkboxes without a bullet beside them. Edit the source to change their checked state.
 
 Plain text starts in a lightweight editor. Markdown, pairs, or pair suggestions load the richer editor on demand. The first transition cannot carry over the initial textarea's undo history. Subsequent toggle changes retain the richer editor for that session.
 
@@ -26,6 +30,8 @@ Welcome everyone.
 Today we will explain the idea.
 }
 ```
+
+Add an optional name in parentheses to replace the displayed type label: `!ENV(API token): value`, `!IDEA(Next steps): text`, or `!SCRIPT(Introduction):{` followed by its body and closing brace. Names can contain spaces and Unicode, but not parentheses or line breaks. The type still controls masking, styling, and `pair:ENV` / `pair:SCRIPT` searches. Empty names use the type label.
 
 These are synthetic values. An ENV row shows eight bullets and an eye button. Revealing or editing its value exposes the actual text. Masking is a display feature, not encryption.
 

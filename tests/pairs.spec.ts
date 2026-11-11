@@ -133,3 +133,15 @@ test('SCRIPT pairs provide a styled presentation script with editing, folding, c
   await page.getByRole('textbox',{name:'Search text'}).fill('pair:SCRIPT Ready');
   await expect(page.locator('.result')).toHaveCount(1);
 });
+
+test('named pairs display names while preserving masking and source editing',async({page})=>{
+  const source='!ENV(API token): secret-value\n!SCRIPT(Introduction):{\nHello everyone\n}\n\nEditing here';
+  await capture(page,source);
+  await expect(page.locator('.pair-env .pair-label')).toHaveText('API token:');
+  await expect(page.locator('.pair-env .pair-value')).toHaveText('••••••••');
+  await expect(page.locator('.pair-script .pair-label')).toHaveText('Introduction');
+  await page.getByRole('button',{name:'Reveal ENV value'}).click();
+  await expect(page.locator('.pair-env .pair-value')).toHaveText('secret-value');
+  await page.getByRole('button',{name:'Edit Introduction pair',exact:true}).click();
+  await expect(page.locator('.cm-line').filter({hasText:'!SCRIPT(Introduction):{'})).toBeVisible();
+});
