@@ -1,6 +1,6 @@
-# Develop bbb-notepad
+# Develop bnote
 
-Build and test from the project root. Windows x64 is the tested desktop target.
+Build and test from the project root. See [checks and limits](validation.md) for native platform coverage.
 
 ## Prepare the checkout
 

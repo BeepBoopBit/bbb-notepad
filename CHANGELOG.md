@@ -1,8 +1,14 @@
 # Changelog
 
-User-visible changes to bbb-notepad. Local builds and published releases are distinguished explicitly.
+User-visible changes to bnote. Local builds and published releases are distinguished explicitly.
 
-## 0.2.1-beta — Unreleased
+## 0.2.2-beta
+
+- Renamed the desktop app to bnote and added native Arch packaging for the floating sticky window and tiled editor.
+- Added independent sticky and editor tab sessions with shared search and an Open in Editor action.
+- Migrated the existing sticky draft into the searchable note library and protected shared notes against stale saves.
+
+## 0.2.1-beta — 2026-11-11
 
 - Configured a permanent beta update feed for new installers, with publication automation that preserves signed versioned downloads and prevents older releases from replacing newer metadata.
 - Existing 0.1.0-beta and 0.2.0-beta installations need one manual installer upgrade to enable future in-app updates.

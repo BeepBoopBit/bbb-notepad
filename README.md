@@ -1,15 +1,15 @@
 <p align="center">
-  <img src="assets/bbb-notepad.png" width="240" height="240" alt="bbb-notepad icon">
+  <img src="assets/bbb-notepad.png" width="240" height="240" alt="bnote icon">
 </p>
 
-# bbb-notepad
+# bnote
 
 <p align="center">
   <strong>A better Notepad for my own needs.</strong><br>
   A local desktop app for the notes, ideas, values, and prompts I use each day.
 </p>
 <p align="center">
-  <a href="CHANGELOG.md">Version 0.2.1-beta (unreleased)</a> ·
+  <a href="CHANGELOG.md">Version 0.2.2-beta</a> ·
   <a href="docs/development/validation.md">Windows x64 validated</a>
 </p>
 
@@ -32,7 +32,7 @@ an old note, group related content, or add behavior for the way I work.
 - **Reuse selected text.** Collect sentences and blocks into a prompt without copying each part separately.
 - **Extend the editor.** Add features for my own workflow as my needs change.
 
-bbb-notepad keeps quick capture at the center, with automatic saving and
+bnote keeps quick capture at the center, with automatic saving and
 search across open and closed notes. Pairs provide structure within a note.
 Extensibility currently means changes to the app's source code.
 
@@ -45,28 +45,34 @@ Extensibility currently means changes to the app's source code.
 - **Work with files.** Import and export text files.
 - **Adjust the editor.** Select a light or dark theme, change editor zoom, and use keyboard shortcuts.
 
-This is an independent personal project. Quick capture is the implemented mode.
-Other modes and a notes CLI are not implemented. Startup and large-collection
-performance have not yet been benchmarked. See [validation limits](docs/development/validation.md#remaining-limits).
+The desktop app also has a compact sticky window with its own restored tabs and the same searchable notes as the editor.
+Startup and large-collection performance have not yet been benchmarked. See [validation limits](docs/development/validation.md#remaining-limits).
 
 ## Installation
 
 ### Windows beta
 
 If you have the Windows beta installer, run
-`bbb-notepad_<version>_x64-setup.exe`. Then open **bbb-notepad**.
-Download published installers from [GitHub Releases](https://github.com/BeepBoopBit/bbb-notepad/releases). The upcoming `0.2.1-beta` has not been released yet.
+`bnote_<version>_x64-setup.exe`. Then open **bnote**.
+Download published installers from [GitHub Releases](https://github.com/BeepBoopBit/bbb-notepad/releases).
 To build an installer locally, follow [Releasing](RELEASING.md).
 
 | Target | Status |
 | --- | --- |
 | Windows x64 | Desktop app and per-user installer validated |
-| macOS and Linux | Intended desktop targets; native builds and installers still need validation |
+| Arch Linux x64 | Native app with an optional Hyprland floating-window rule |
+| macOS | Native build and installer still need validation |
 | Browser | Development preview with separate browser storage |
 | Public releases and update feed | Not published or configured yet |
 
 The app supports manual signed updates with a backup before installation.
 This requires a configured release feed. See [Releasing](RELEASING.md).
+
+### Arch Linux
+
+From the checkout, install the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/), Node.js, npm, and Rust. Then build and install the local package from `packaging/arch` with `makepkg -si`.
+
+Search your app launcher for **bnote** to open the floating sticky window or **bnote Editor** for the full editor. On Hyprland 0.57, load [the supplied Lua rule](packaging/arch/bnote.lua) from your Hyprland configuration to float the sticky window. Both windows can stay open at once.
 
 ### Local development
 
@@ -91,7 +97,7 @@ npm run tauri -- dev
 
 ## Quick start
 
-With **bbb-notepad** open:
+With **bnote** open:
 
 1. Press Ctrl+T to create a note.
 2. Type an idea.

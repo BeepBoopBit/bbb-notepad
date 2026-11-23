@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=bnote
+Comment=Open the floating scratch note
+Exec=bnote --sticky
+Icon=dev.bbb.notes
+Terminal=false
+Categories=Utility;

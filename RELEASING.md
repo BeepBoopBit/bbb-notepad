@@ -1,12 +1,12 @@
-# Build and release bbb-notepad
+# Build and release bnote
 
-Use this procedure to produce a signed Windows installer and prepare a release. The public repository is [BeepBoopBit/bbb-notepad](https://github.com/BeepBoopBit/bbb-notepad). The next version is `0.2.1-beta`; committing or pushing it does not publish a release.
+Use this procedure to produce a signed Windows installer and prepare a release. The public repository is [BeepBoopBit/bbb-notepad](https://github.com/BeepBoopBit/bbb-notepad). The next version is `0.2.2-beta`; committing or pushing it does not publish a release.
 
 ## Release scope
 
 Windows x64 is the validated packaging target. The installer runs per user, creates shortcuts and an uninstaller, and includes the WebView2 bootstrapper. Installing a missing WebView2 runtime can still require network access.
 
-Keep the bundle identifier `dev.bbb.notes` and the existing storage keys. They preserve notes and preferences from the earlier bbb-notes name. Renaming the project folder does not require changing this installed identity.
+Keep the bundle identifier `dev.bbb.notes` and the existing storage keys. They preserve notes and preferences from the earlier bbb-notes name. The renamed Windows installer removes the previous per-user bbb-notepad installation and registers bnote. Before publishing, test an upgrade from the prior signed beta on Windows, including existing notes, shortcuts, and Installed Apps.
 
 The repository is public and licensed under MIT. Keep release assets public so installed apps can download updates without credentials.
 
@@ -16,13 +16,13 @@ Run from the project root with Node.js 24 and Rust installed:
 
 ```sh
 npm ci
-npm run release:version -- 0.2.1-beta
-npm run release:verify -- v0.2.1-beta
+npm run release:version -- 0.2.2-beta
+npm run release:verify -- v0.2.2-beta
 ```
 
 The version helper updates package.json, package-lock.json, Cargo.toml, Cargo.lock, and Tauri configuration. Verification checks the primary package/native versions and optional tag. Keep all generated changes together.
 
-Use `0.2.1-beta.1` for a later beta, or `0.1.0` when deliberately promoting this baseline to stable. Do not label a beta as a stable release merely because its installer builds.
+Increment the patch number for a new patch beta. Update `pkgver` in `packaging/arch/PKGBUILD` to match, using an underscore before the beta suffix.
 
 Run the [development checks](docs/development/README.md#run-focused-checks) and documentation checks before packaging. Update [CHANGELOG.md](CHANGELOG.md) with user-visible changes and remaining limits.
 
@@ -52,9 +52,9 @@ npm.cmd run release:build -- --ci
 Expected outputs for this version:
 
 ```text
-src-tauri/target/release/bbb-notepad.exe
-src-tauri/target/release/bundle/nsis/bbb-notepad_0.2.1-beta_x64-setup.exe
-src-tauri/target/release/bundle/nsis/bbb-notepad_0.2.1-beta_x64-setup.exe.sig
+src-tauri/target/release/bnote.exe
+src-tauri/target/release/bundle/nsis/bnote_0.2.2-beta_x64-setup.exe
+src-tauri/target/release/bundle/nsis/bnote_0.2.2-beta_x64-setup.exe.sig
 ```
 
 The build must finish successfully and produce both the installer and its nonempty signature. A missing signing key is a build error. Close running copies normally before replacing the executable used for local testing.
@@ -89,7 +89,7 @@ Run configuration before building so the address is embedded. The Windows releas
 
 The [beta feed workflow](.github/workflows/beta-feed.yml) runs when a versioned prerelease is published. It copies the signed manifest to the metadata-only `beta-channel` prerelease and points downloads at the original versioned installer. It rejects mismatched metadata and refuses to replace the feed with an equal or older version. Keep the channel release and prior versioned installers available. Every prerelease currently uses this shared beta channel; separate alpha channels are not supported.
 
-The first feed is created only when an eligible release is published after this workflow is merged. Until then, the configured beta feed returns 404 and the app reports a check error. Draft releases never advance the feed. Publish drafts manually through GitHub; releases published by a workflow using `GITHUB_TOKEN` do not trigger another workflow.
+Draft releases never advance the feed. Publish drafts manually through GitHub; releases published by a workflow using `GITHUB_TOKEN` do not trigger another workflow.
 
 Already-installed `0.1.0-beta` and `0.2.0-beta` builds have no feed address. Install an update-enabled installer manually once; subsequent versions can use **Settings → Check for updates**. A missing feed must never be described as an up-to-date result.
 
@@ -101,11 +101,11 @@ After a successful build, generate a manifest if the chosen release channel will
 npm run release:manifest -- BeepBoopBit/bbb-notepad src-tauri/target/release/bundle/nsis CHANGELOG.md latest.json
 ```
 
-The helper requires the installer and matching signature for the current version. It writes the version, notes, publication timestamp, platform key, signature, and versioned GitHub installer URL. For this beta, that URL uses tag `v0.2.1-beta`.
+The helper requires the installer and matching signature for the current version. It writes the version, notes, publication timestamp, platform key, signature, and versioned GitHub installer URL. For this beta, that URL uses tag `v0.2.2-beta`.
 
 Upload the setup executable and matching `.exe.sig` to a draft release. Upload `latest.json` only according to the intended channel policy. A manifest attached to a beta release does not make the stable feed discover it.
 
-Mark `v0.2.1-beta` as a **prerelease**. Review the download, notes, and signatures before publishing. Keep prior release assets available for clients that still reference them. The existing public beta manifests are accessible; the permanent beta channel will be created on the next eligible publication.
+Mark `v0.2.2-beta` as a **prerelease**. Review the download, notes, and signatures before publishing. Keep prior release assets available for clients that still reference them.
 
 ## CI and release triggers
 

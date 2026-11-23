@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
-import { Compartment, EditorState } from '@codemirror/state';
+import { Annotation, Compartment, EditorState, Transaction } from '@codemirror/state';
 import { EditorView, keymap, placeholder, drawSelection } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { bracketMatching, syntaxHighlighting } from '@codemirror/language';
@@ -19,6 +19,8 @@ import { blockEditing } from './block-editing';
 import { outlineItems,outlineState,toggleOutline,setAllOutline } from './outline';
 import { slashCommands } from './slash-commands';
 import './markdown.css';
+
+const externalEdit = Annotation.define<boolean>();
 
 const collapsedNotes=new Map<string,Set<number>>();
 type Props = {
@@ -47,6 +49,7 @@ const theme = EditorView.theme({
 }, {dark:true});
 
 export default forwardRef<NoteEditorHandle, Props>(function MarkdownEditor(props, ref) {
+  const lineSeparator = useRef(new Compartment());
   const wrapping=useRef(new Compartment());
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
@@ -83,7 +86,7 @@ export default forwardRef<NoteEditorHandle, Props>(function MarkdownEditor(props
       doc:props.content,
       selection: {anchor: Math.min(props.initialPosition?.start ?? 0, props.content.replace(/\r\n?/g, '\n').length), head: Math.min(props.initialPosition?.end ?? 0, props.content.replace(/\r\n?/g, '\n').length)},
       extensions: [
-        EditorState.lineSeparator.of(props.content.includes('\r\n') ? '\r\n' : '\n'),
+        lineSeparator.current.of(EditorState.lineSeparator.of(props.content.includes('\r\n') ? '\r\n' : '\n')),
         heldPreviewSelection, previewTheme.init(()=>props.theme), slashCommands, outlineState.init(()=>({collapsed:new Set(collapsedNotes.get(props.noteId)),rawPairs:new Set()})), history(), drawSelection(), pairSuggestionEditing, pairEditing, blockEditing, markdownNavigation, keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
         markdown({ codeLanguages: languages, extensions: [GFM,pairMarkdown], pasteURLAsLink: false }), bracketMatching(), syntaxHighlighting(classHighlighter),
         placeholder('Paste something. Catch a thought.'), wrapping.current.of(props.wordWrap ? EditorView.lineWrapping : []), theme,
@@ -91,7 +94,7 @@ export default forwardRef<NoteEditorHandle, Props>(function MarkdownEditor(props
         markdownRendering.init(()=>props.render), livePreview,
         EditorView.updateListener.of(update => {
           if(!rendering.current && update.transactions.some(tr=>tr.effects.some(effect=>effect.is(setAllOutline))))renderRequested.current();
-          if(update.docChanged) { copying.current?.edited(); onChange.current(update.state.sliceDoc()); }
+          if(update.docChanged) { copying.current?.edited(); if (!update.transactions.some(transaction => transaction.annotation(externalEdit))) onChange.current(update.state.sliceDoc()); }
           copying.current?.refresh();
         }),
       ],
@@ -102,6 +105,18 @@ export default forwardRef<NoteEditorHandle, Props>(function MarkdownEditor(props
     if(props.initialCommand)editor.dispatch({effects:setAllOutline.of(props.initialCommand==='collapse')});
     return () => { collapsedNotes.set(props.noteId,new Set(editor.state.field(outlineState).collapsed));copying.current?.destroy(); copying.current=null; view.current = null; editor.destroy(); };
   }, []);
+  useLayoutEffect(() => {
+    const editor = view.current;
+    if (!editor || editor.state.sliceDoc() === props.content) return;
+    const separator = props.content.includes('\r\n') ? '\r\n' : '\n';
+    editor.dispatch({
+      changes: { from: 0, to: editor.state.doc.length, insert: EditorState.create({
+        doc: props.content, extensions: [EditorState.lineSeparator.of(separator)],
+      }).doc },
+      effects: lineSeparator.current.reconfigure(EditorState.lineSeparator.of(separator)),
+      annotations: [externalEdit.of(true), Transaction.addToHistory.of(false)],
+    });
+  }, [props.content]);
   useEffect(() => {
     const editor = view.current;
     if (!editor) return;

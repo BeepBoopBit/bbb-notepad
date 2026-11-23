@@ -9,7 +9,7 @@ try{
   if(command==='configure'){const repo=configureRepository(root,args[0] || '');console.log(`Update source configured for ${repo}.`);}
   else if(command==='version')console.log(`Version set to ${setVersion(root,args[0] || '')}`);
   else if(command==='verify'){
-    const version=releaseVersion(root),tag=args[0];if(tag && tag!==`v${version}`)throw new Error(`Release tag must be v${version}.`);console.log(`bbb-notepad ${version}: versions match.`);
+    const version=releaseVersion(root),tag=args[0];if(tag && tag!==`v${version}`)throw new Error(`Release tag must be v${version}.`);console.log(`bnote ${version}: versions match.`);
   } else if(command==='manifest'){
     const [repository,artifacts,notesFile,output='latest.json']=args;if(!artifacts)throw new Error('Usage: npm run release:manifest -- owner/repo installer-directory [release-notes-file] [output-file]');
     const manifest=createManifest(root,repository,path.resolve(artifacts),notesFile ? fs.readFileSync(notesFile,'utf8') : '');fs.writeFileSync(output,JSON.stringify(manifest,null,2)+'\n');console.log(`Wrote ${output}`);

@@ -1,5 +1,5 @@
 use crate::pairs::{parse_pairs, search_query};
-use rusqlite::{params, Connection, Result};
+use rusqlite::{params, Connection, OptionalExtension, Result};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -27,6 +27,7 @@ impl Store {
           CREATE TABLE IF NOT EXISTS pairs(note_id TEXT NOT NULL REFERENCES notes(id) ON DELETE CASCADE, key TEXT NOT NULL, value TEXT NOT NULL);
           CREATE INDEX IF NOT EXISTS pairs_key_note ON pairs(key,note_id);
           CREATE TABLE IF NOT EXISTS session(id INTEGER PRIMARY KEY CHECK(id=1), tabs TEXT NOT NULL, active TEXT);
+          CREATE TABLE IF NOT EXISTS sticky_session(id INTEGER PRIMARY KEY CHECK(id=1), tabs TEXT NOT NULL, active TEXT);
           CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(content, content='notes', content_rowid='rowid');
           CREATE TRIGGER IF NOT EXISTS notes_ai AFTER INSERT ON notes BEGIN INSERT INTO notes_fts(rowid,content) VALUES(new.rowid,new.content); END;
           CREATE TRIGGER IF NOT EXISTS notes_au AFTER UPDATE ON notes BEGIN
@@ -52,33 +53,114 @@ impl Store {
             tx.pragma_update(None, "user_version", 2)?;
             tx.commit()?;
         }
+        if version < 3 {
+            let tx = conn.unchecked_transaction()?;
+            tx.execute("CREATE TABLE IF NOT EXISTS scratch(id INTEGER PRIMARY KEY CHECK(id=1), content TEXT NOT NULL)", [])?;
+            let scratch: Option<String> = tx
+                .query_row("SELECT content FROM scratch WHERE id=1", [], |row| {
+                    row.get(0)
+                })
+                .optional()?;
+            if let Some(content) = scratch.filter(|content| !content.is_empty()) {
+                let note = Note {
+                    id: "sticky-draft".into(),
+                    content,
+                    updated: std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_millis() as i64,
+                };
+                tx.execute(
+                    "INSERT INTO notes VALUES(?1,?2,?3)",
+                    params![note.id, note.content, note.updated],
+                )?;
+                Self::index_pairs(&tx, &note)?;
+                tx.execute(
+                    "INSERT INTO sticky_session VALUES(1,?1,?2)",
+                    params![serde_json::json!([note.id]).to_string(), note.id],
+                )?;
+            }
+            tx.execute("DROP TABLE scratch", [])?;
+            tx.pragma_update(None, "user_version", 3)?;
+            tx.commit()?;
+        }
         Ok(Self { conn })
     }
     pub fn backup_to(&self, path: &Path) -> Result<()> {
         self.conn.backup("main", path, None)
     }
+    #[cfg(test)]
     pub fn save_note(&self, note: &Note) -> Result<()> {
         let tx = self.conn.unchecked_transaction()?;
         tx.execute("INSERT INTO notes VALUES(?1,?2,?3) ON CONFLICT(id) DO UPDATE SET content=excluded.content,updated=excluded.updated", params![note.id,note.content,note.updated])?;
-        tx.execute("DELETE FROM pairs WHERE note_id=?1", [&note.id])?;
-        for pair in parse_pairs(&note.content) {
+        Self::index_pairs(&tx, note)?;
+        tx.commit()
+    }
+    pub fn save_note_checked(&self, mut note: Note, expected: Option<i64>) -> Result<Option<Note>> {
+        let tx = self.conn.unchecked_transaction()?;
+        let changed = if let Some(expected) = expected {
+            note.updated = note.updated.max(expected.saturating_add(1));
             tx.execute(
+                "UPDATE notes SET content=?1,updated=?2 WHERE id=?3 AND updated=?4",
+                params![note.content, note.updated, note.id, expected],
+            )?
+        } else {
+            tx.execute(
+                "INSERT INTO notes VALUES(?1,?2,?3) ON CONFLICT(id) DO NOTHING",
+                params![note.id, note.content, note.updated],
+            )?
+        };
+        if changed == 0 {
+            return Ok(None);
+        }
+        Self::index_pairs(&tx, &note)?;
+        tx.commit()?;
+        Ok(Some(note))
+    }
+    fn index_pairs(conn: &Connection, note: &Note) -> Result<()> {
+        conn.execute("DELETE FROM pairs WHERE note_id=?1", [&note.id])?;
+        for pair in parse_pairs(&note.content) {
+            conn.execute(
                 "INSERT INTO pairs VALUES(?1,?2,?3)",
                 params![note.id, pair.key, pair.value],
             )?;
         }
-        tx.commit()
-    }
-    pub fn save_session(&self, tabs: &[String], active: Option<&str>) -> Result<()> {
-        self.conn.execute("INSERT INTO session VALUES(1,?1,?2) ON CONFLICT(id) DO UPDATE SET tabs=excluded.tabs,active=excluded.active", params![serde_json::to_string(tabs).unwrap(), active])?;
         Ok(())
     }
-    pub fn session(&self) -> Result<Session> {
+    fn session_table(sticky: bool) -> &'static str {
+        if sticky {
+            "sticky_session"
+        } else {
+            "session"
+        }
+    }
+    pub fn save_session(&self, tabs: &[String], active: Option<&str>, sticky: bool) -> Result<()> {
+        let table = Self::session_table(sticky);
+        self.conn.execute(&format!("INSERT INTO {table} VALUES(1,?1,?2) ON CONFLICT(id) DO UPDATE SET tabs=excluded.tabs,active=excluded.active"), params![serde_json::to_string(tabs).unwrap(), active])?;
+        Ok(())
+    }
+    pub fn note(&self, id: &str) -> Result<Option<Note>> {
+        self.conn
+            .query_row(
+                "SELECT id,content,updated FROM notes WHERE id=?1",
+                [id],
+                |row| {
+                    Ok(Note {
+                        id: row.get(0)?,
+                        content: row.get(1)?,
+                        updated: row.get(2)?,
+                    })
+                },
+            )
+            .optional()
+    }
+    pub fn session(&self, sticky: bool) -> Result<Session> {
         let mut tabs = vec![];
         let mut active = None;
+        let table = Self::session_table(sticky);
         let mut stmt = self
             .conn
-            .prepare("SELECT tabs,active FROM session WHERE id=1")?;
+            .prepare(&format!("SELECT tabs,active FROM {table} WHERE id=1"))?;
         let mut rows = stmt.query([])?;
         if let Some(row) = rows.next()? {
             let json: String = row.get(0)?;
@@ -152,14 +234,18 @@ mod tests {
         };
         store.save_note(&note).unwrap();
         store
-            .save_session(&[note.id.clone()], Some(&note.id))
+            .save_session(&[note.id.clone()], Some(&note.id), false)
+            .unwrap();
+        store
+            .save_session(&[note.id.clone()], Some(&note.id), true)
             .unwrap();
         store.backup_to(&path).unwrap();
         let backup = Store::open(&path).unwrap();
-        let session = backup.session().unwrap();
+        let session = backup.session(false).unwrap();
         assert_eq!(session.notes[0].content, note.content);
         assert_eq!(session.active, Some(note.id));
         assert_eq!(backup.search("pair:SCRIPT Hello").unwrap().len(), 1);
+        assert_eq!(backup.session(true).unwrap().tabs, session.tabs);
         drop(backup);
         std::fs::remove_file(path).unwrap();
     }
@@ -173,12 +259,12 @@ mod tests {
             updated: 1,
         };
         store.save_note(&note).unwrap();
-        store.save_session(&["a".into()], Some("a")).unwrap();
+        store.save_session(&["a".into()], Some("a"), false).unwrap();
         drop(store);
         let store = Store::open(&path).unwrap();
-        assert_eq!(store.session().unwrap().notes[0].content, note.content);
-        store.save_session(&[], None).unwrap();
-        assert!(store.session().unwrap().notes.is_empty());
+        assert_eq!(store.session(false).unwrap().notes[0].content, note.content);
+        store.save_session(&[], None, false).unwrap();
+        assert!(store.session(false).unwrap().notes.is_empty());
         assert_eq!(store.search("100%_").unwrap().len(), 1);
         assert_eq!(store.search("cloudflare_api").unwrap().len(), 1);
         assert!(store.search("missing").unwrap().is_empty());
@@ -244,5 +330,66 @@ mod tests {
         assert_eq!(store.search("pair:ENV upgrade-secret").unwrap().len(), 1);
         drop(store);
         std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn migrates_legacy_draft_without_changing_editor_tabs() {
+        let path = std::env::temp_dir().join(format!(
+            "bnote-sticky-migration-{}.sqlite3",
+            std::process::id()
+        ));
+        let old = Store::open(&path).unwrap();
+        let note = Note {
+            id: "editor".into(),
+            content: "Editor note".into(),
+            updated: 1,
+        };
+        old.save_note(&note).unwrap();
+        old.save_session(&[note.id.clone()], Some(&note.id), false)
+            .unwrap();
+        old.conn.execute_batch("CREATE TABLE scratch(id INTEGER PRIMARY KEY, content TEXT NOT NULL); INSERT INTO scratch VALUES(1,'!IDEA: Old sticky draft'); PRAGMA user_version=2;").unwrap();
+        drop(old);
+
+        let store = Store::open(&path).unwrap();
+        assert_eq!(store.session(false).unwrap().tabs, vec![note.id]);
+        let sticky = store.session(true).unwrap();
+        assert_eq!(sticky.active, Some("sticky-draft".into()));
+        assert_eq!(sticky.notes[0].content, "!IDEA: Old sticky draft");
+        assert_eq!(store.search("pair:IDEA Old sticky").unwrap().len(), 1);
+        drop(store);
+        let store = Store::open(&path).unwrap();
+        assert_eq!(store.search("Old sticky").unwrap().len(), 1);
+        drop(store);
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn stale_note_write_cannot_replace_newer_text_or_search_entries() {
+        let store = Store::open(Path::new(":memory:")).unwrap();
+        let mut note = Note {
+            id: "shared".into(),
+            content: "Original".into(),
+            updated: 1,
+        };
+        let original = store
+            .save_note_checked(note.clone(), None)
+            .unwrap()
+            .unwrap();
+        note.content = "!IDEA: Latest capture".into();
+        let latest = store
+            .save_note_checked(note.clone(), Some(original.updated))
+            .unwrap()
+            .unwrap();
+        assert!(latest.updated > original.updated);
+        note.content = "!IDEA: Stale capture".into();
+        assert!(store
+            .save_note_checked(note, Some(original.updated))
+            .unwrap()
+            .is_none());
+        assert_eq!(
+            store.search("pair:IDEA Latest").unwrap()[0].content,
+            latest.content
+        );
+        assert!(store.search("pair:IDEA Stale").unwrap().is_empty());
     }
 }

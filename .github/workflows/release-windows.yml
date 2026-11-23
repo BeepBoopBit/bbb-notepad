@@ -52,7 +52,10 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: v__VERSION__
-          releaseName: bbb-notepad v__VERSION__
+          releaseName: bnote v__VERSION__
           releaseBody: See the release notes for changes. Notes and settings are preserved during upgrades.
           releaseDraft: true
           prerelease: ${{ steps.metadata.outputs.prerelease == 'true' }}
+      - name: Smoke-test upgrade from bbb-notepad
+        shell: pwsh
+        run: ./scripts/checks/windows-upgrade.ps1

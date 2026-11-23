@@ -1,7 +1,7 @@
 # Checks and limits
 
-Windows x64 is the tested desktop target. Browser tests cover the shared UI,
-but do not verify native storage or installers.
+Native checks cover Arch Linux x64 on Hyprland 0.57.2 and earlier Windows x64 builds.
+Browser tests cover the shared UI and use a mocked bridge for desktop interactions.
 
 ## Check coverage
 
@@ -23,9 +23,16 @@ The app rejected a modified installer and installed the valid package.
 Notes, tabs, and the theme survived the upgrade. The backup contained the saved
 notes and tabs. These test builds were not public releases.
 
+## Arch Linux window checks
+
+On native Wayland, the sticky note opened floating and the editor tiled beside it.
+Launching the sticky again focused its existing window. The sticky window and
+editor store their tab sessions independently and search the same notes.
+
 ## Remaining limits
 
-- macOS and Linux builds, installers, and upgrades need native testing.
+- The bnote rename and installer migration need a signed Windows upgrade test.
+- macOS and other Linux desktops need native testing.
 - Startup and large-note-collection performance have not been measured.
 - Crash recovery and disk or save failures need more native testing.
 - Hosted CI, release publication, and live update feeds remain unverified.

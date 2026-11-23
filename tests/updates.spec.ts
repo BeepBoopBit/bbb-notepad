@@ -19,6 +19,7 @@ async function mockDesktop(page:Page,options:{configured?:boolean;available?:boo
       if(command==='plugin:updater|download'){if(options.downloadError)throw new Error('Invalid update signature');args.onEvent.onmessage({event:'Started',data:{contentLength:10}});args.onEvent.onmessage({event:'Progress',data:{chunkLength:10}});args.onEvent.onmessage({event:'Finished'});return 2;}
       if(command==='plugin:updater|install'){if(options.pauseInstall)await new Promise(resolve=>{win.updateMock.installResolve=resolve;});return;}
       if(command==='plugin:window|is_maximized')return false;
+      if(command==='plugin:window|get_all_windows')return ['main'];
       if(command==='plugin:event|listen')return ++id;
       return null;
     }};
@@ -53,7 +54,7 @@ test('download, flush, backup, install and restart happen in order; installation
   await expect.poll(()=>page.evaluate(()=>(window as any).updateMock.calls.includes('plugin:updater|install'))).toBe(true);
   await expect(page.locator('.editor')).toHaveAttribute('inert','');await page.keyboard.press('Control+t');await expect(page.locator('.tab')).toHaveCount(1);await expect(dialog.getByRole('button',{name:'Close updates'})).toBeDisabled();
   const calls=await page.evaluate(()=>(window as any).updateMock.calls as string[]),backup=calls.indexOf('prepare_update'),install=calls.indexOf('plugin:updater|install');
-  expect(calls.lastIndexOf('save_note',backup)).toBeLessThan(backup);expect(calls.lastIndexOf('save_session',backup)).toBeLessThan(backup);expect(calls.indexOf('plugin:updater|download')).toBeLessThan(backup);expect(backup).toBeLessThan(install);
+  expect(calls.lastIndexOf('save_note',backup)).toBeLessThan(backup);expect(calls.lastIndexOf('save_session',backup)).toBeLessThan(backup);expect(calls.indexOf('plugin:updater|download')).toBeLessThan(backup);expect(calls.indexOf('begin_update')).toBeLessThan(calls.indexOf('plugin:window|get_all_windows'));expect(calls.indexOf('plugin:window|get_all_windows')).toBeLessThan(backup);expect(backup).toBeLessThan(install);
   expect(await page.evaluate(()=>(window as any).updateMock.session.notes[0].content)).toBe('Newest note');await page.evaluate(()=>(window as any).updateMock.installResolve());await expect.poll(()=>page.evaluate(()=>(window as any).updateMock.calls.includes('relaunch_after_update'))).toBe(true);
 });
 test('network check failure has a retry action and never says up to date',async({page})=>{

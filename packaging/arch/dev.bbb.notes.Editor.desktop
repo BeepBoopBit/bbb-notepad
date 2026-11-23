@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=bnote Editor
+Comment=Open the full note editor
+Exec=bnote --editor
+Icon=dev.bbb.notes
+Terminal=false
+Categories=Utility;TextEditor;

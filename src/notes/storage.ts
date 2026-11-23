@@ -7,18 +7,19 @@ const key = 'bbb-notes-preview-v1';
 const empty = (): Session => ({ notes: [], tabs: [], active: null });
 function read(): Session { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : empty(); }
 export const storage = {
-  async load(): Promise<Session> {
-    if (desktop) return invoke('load_session');
+  async load(sticky = false): Promise<Session> {
+    if (desktop) return invoke('load_session', { sticky });
     const data = read();
     return { ...data, notes: data.notes.filter(n => data.tabs.includes(n.id)) };
   },
-  async saveNote(note: Note) {
-    if (desktop) return invoke<void>('save_note', { note });
+  async saveNote(note: Note, expected?: number): Promise<number> {
+    if (desktop) return (await invoke<number>('save_note', { note, expected: expected ?? null })) ?? note.updated;
     const data = read(); data.notes = [...data.notes.filter(n => n.id !== note.id), note];
     localStorage.setItem(key, JSON.stringify(data));
+    return note.updated;
   },
-  async saveSession(tabs: string[], active: string | null) {
-    if (desktop) return invoke<void>('save_session', { tabs, active });
+  async saveSession(tabs: string[], active: string | null, sticky = false) {
+    if (desktop) return invoke<void>('save_session', { tabs, active, sticky });
     localStorage.setItem(key, JSON.stringify({ ...read(), tabs, active }));
   },
   async search(query: string): Promise<Note[]> {

@@ -1,4 +1,7 @@
 import { desktop } from '../platform/environment';
+import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import React, { useEffect, useLayoutEffect, useRef, useState, lazy, Suspense } from 'react';
 import { flushSync } from 'react-dom';
 import { storage, title, snippet, type Note, type Session } from '../notes/storage';
@@ -28,7 +31,7 @@ document.documentElement.dataset.theme=savedTheme();
 type FileInfo=Omit<OpenedFile,'content'>;
 function savedFileInfo():Record<string,FileInfo>{try{return JSON.parse(localStorage.getItem('bbb-notes-file-info-v1') || '{}');}catch{return {};}}
 const blank = (): Note => ({ id: createNoteId(), content: '', updated: Date.now() });
-export default function App() {
+export default function App({ sticky = false }: { sticky?: boolean }) {
   const [data, setData] = useState<Session>({ notes: [], tabs: [], active: null });
   const current = useRef(data);
   const loaded = useRef(false);
@@ -48,6 +51,9 @@ export default function App() {
   const pendingCommand=useRef<'collapse'|'expand'|undefined>(undefined);
   const pendingMatch = useRef<string | undefined>(undefined);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const incoming = useRef(new Map<string, Note>());
+  const revisions = useRef(new Map<string, number>());
+  const [conflict, setConflict] = useState<string>();
   const dirty = useRef(new Map<string, Note>());
   const queue = useRef<Promise<void>>(Promise.resolve());
   const searchVersion = useRef(0);
@@ -108,9 +114,19 @@ export default function App() {
   fileActions.current={openFile,saveAs};
   async function beforeInstall(){
     installationLock.current=true;setInstalling(true);
-    try{await flush();await updates.backup();}catch(error){installationLock.current=false;setInstalling(false);throw error;}
+    await invoke('begin_update');
+    const deadline = Date.now() + 5000;
+    while (await WebviewWindow.getByLabel('sticky')) {
+      if (Date.now() >= deadline) throw new Error('Close the sticky note after saving its draft, then retry the update.');
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    await flush();
+    await updates.backup();
   }
-  function installFailed(){installationLock.current=false;setInstalling(false);}
+  function installFailed(){
+    installationLock.current=false;setInstalling(false);
+    void invoke('cancel_update').catch(error => setError(String(error)));
+  }
   function closeUpdates(){setUpdateOpen(false);requestAnimationFrame(()=>document.querySelector<HTMLButtonElement>('.settings-button')?.focus());}
   function closeSettings(){setSettingsOpen(false);requestAnimationFrame(()=>document.querySelector<HTMLButtonElement>('.settings-button')?.focus());}
   useEffect(()=>{
@@ -127,12 +143,26 @@ export default function App() {
     clearTimeout(timer.current);
     // Serialize writes; retain dirty notes until their exact revision is acknowledged.
     queue.current = queue.current.catch(() => {}).then(async () => {
-      const snapshot = current.current;
+
       for (const note of [...dirty.current.values()]) {
-        await storage.saveNote(note);
-        if (dirty.current.get(note.id) === note) dirty.current.delete(note.id);
+        try {
+          revisions.current.set(note.id, await storage.saveNote(note, revisions.current.get(note.id)));
+        } catch (reason) {
+          if (reason === 'NOTE_CONFLICT') {
+            setConflict(note.id);
+            throw new Error('This note changed in the other window. Save your edits as a new note to keep both versions.');
+          }
+          throw reason;
+        }
+        if (dirty.current.get(note.id) === note) {
+          dirty.current.delete(note.id);
+          const newer = incoming.current.get(note.id);
+          incoming.current.delete(note.id);
+          if (newer) receiveNote(newer);
+        }
       }
-      await storage.saveSession(snapshot.tabs, snapshot.active);
+      const { tabs, active } = current.current;
+      await storage.saveSession(tabs, active, sticky);
       if (!dirty.current.size) { setStatus('All changes saved'); setError(''); }
     }).catch(e => { setStatus('Not saved'); setError(`Could not save your notes: ${String(e)}`); throw e; });
     return queue.current;
@@ -161,10 +191,49 @@ export default function App() {
       else if (position) { el.setSelectionRange(position.start,position.end); el.scrollTop = position.scroll; }
     });
   }
+  function receiveNote(note: Note) {
+    const s = current.current;
+    if (!s.notes.some(item => item.id === note.id)
+      || (revisions.current.get(note.id) ?? -Infinity) >= note.updated) return;
+    if (dirty.current.has(note.id)) {
+      if ((incoming.current.get(note.id)?.updated ?? -Infinity) < note.updated) incoming.current.set(note.id, note);
+      return;
+    }
+    revisions.current.set(note.id, note.updated);
+    update({ ...s, notes: s.notes.map(item => item.id === note.id ? note : item) });
+  }
   function open(note: Note, match?: string) {
-    remember(); pendingMatch.current = match; const s = current.current;
-    update({notes:s.notes.some(n => n.id === note.id) ? s.notes : [...s.notes,note], tabs:s.tabs.includes(note.id) ? s.tabs : [...s.tabs,note.id], active:note.id});
+    remember(); pendingMatch.current = match;
+    if (!dirty.current.has(note.id)) receiveNote(note);
+    const s = current.current;
+    const existing = s.notes.some(n => n.id === note.id);
+    if (!existing && !dirty.current.has(note.id)) revisions.current.set(note.id, note.updated);
+    update({notes:existing ? s.notes : [...s.notes,note], tabs:s.tabs.includes(note.id) ? s.tabs : [...s.tabs,note.id], active:note.id});
     setSearching(false); schedule(); focus(note.id,match);
+  }
+  function saveConflictCopy(id: string) {
+    const draft = dirty.current.get(id);
+    if (!draft) return;
+    const copy = { ...blank(), content: draft.content };
+    const s = current.current;
+    dirty.current.delete(id);
+    dirty.current.set(copy.id, copy);
+    revisions.current.delete(id);
+    incoming.current.delete(id);
+    setConflict(undefined);
+    const tabs = s.tabs.includes(id) ? s.tabs.map(tab => tab === id ? copy.id : tab) : [...s.tabs, copy.id];
+    update({ notes: [...s.notes.filter(note => note.id !== id), copy], tabs, active: copy.id });
+    schedule();
+    focus(copy.id);
+  }
+  async function openInEditor() {
+    const noteId = current.current.active;
+    try {
+      await flush();
+      await invoke('open_bnote_window', { sticky: false, noteId });
+    } catch (reason) {
+      setError(String(reason));
+    }
   }
   function create() { const note = blank(); dirty.current.set(note.id,note); open(note); }
   function close(id: string) {
@@ -179,35 +248,67 @@ export default function App() {
     schedule();
   }
   useEffect(() => {
-    storage.load().then(s => {
-      if (!s.tabs.length) { const note = blank(); s = {notes:[note],tabs:[note.id],active:note.id}; dirty.current.set(note.id,note); }
-      update(s); loaded.current = true; setReady(true); setStatus('All changes saved');
-      if (dirty.current.size) schedule();
-      if (s.active) focus(s.active);
-    }).catch(e => { setStatus('Unable to open notes'); setError(String(e)); });
-    let dispose: (() => void) | undefined;
+    const dispose: (() => void)[] = [];
     let disposed = false;
-    if (desktop) void import('@tauri-apps/api/window').then(async ({getCurrentWindow}) => {
-      const window = getCurrentWindow();
-      const unlisten = await window.onCloseRequested(async event => {
-        event.preventDefault();
-        if(installationLock.current)return;
-        try { if (loaded.current) await flush(); await window.destroy(); } catch { /* Keep the window and unsaved text available. */ }
-      });
-      if (disposed) unlisten(); else dispose = unlisten;
-    }).catch(e => setError(`Unable to protect window closure: ${String(e)}`));
+    function subscribe(stop: () => void) {
+      if (disposed) stop(); else dispose.push(stop);
+    }
+    async function receiveHandoff() {
+      if (!loaded.current || disposed || installationLock.current) return;
+      const note = await invoke<Note | null>('take_editor_note');
+      if (note && !disposed) open(note);
+    }
+    function refreshNotes() {
+      if (desktop && loaded.current) void storage.load(sticky).then(session => {
+        if (!disposed) session.notes.forEach(receiveNote);
+      }).catch(reason => setError(String(reason)));
+    }
+    void (async () => {
+      if (desktop) {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        const nativeWindow = getCurrentWindow();
+        subscribe(await nativeWindow.onCloseRequested(async event => {
+          event.preventDefault();
+          if (installationLock.current) return;
+          installationLock.current = true;
+          setInstalling(true);
+          try { if (loaded.current) await flush(); await nativeWindow.destroy(); }
+          catch { installationLock.current = false; setInstalling(false); }
+        }));
+        subscribe(await listen<Note>('note-changed', event => receiveNote(event.payload)));
+        if (!sticky) subscribe(await listen('open-editor-note', () => {
+          void receiveHandoff().catch(reason => setError(String(reason)));
+        }));
+      }
+      let session = await storage.load(sticky);
+      if (disposed) return;
+      for (const note of session.notes) revisions.current.set(note.id, note.updated);
+      if (!session.tabs.length) {
+        const note = blank();
+        session = { notes: [note], tabs: [note.id], active: note.id };
+        dirty.current.set(note.id, note);
+      }
+      update(session);
+      loaded.current = true;
+      setReady(true);
+      setStatus('All changes saved');
+      if (dirty.current.size) schedule();
+      if (session.active) focus(session.active);
+      if (desktop && !sticky) await receiveHandoff();
+    })().catch(reason => { if (!disposed) { setStatus('Unable to open notes'); setError(String(reason)); } });
+    window.addEventListener('focus', refreshNotes);
     const unload = (event: BeforeUnloadEvent) => {
       if (dirty.current.size) { void flush().catch(() => {}); event.preventDefault(); }
     };
     window.addEventListener('beforeunload',unload);
-    return () => { disposed = true; dispose?.(); window.removeEventListener('beforeunload',unload); };
+    return () => { disposed = true; dispose.forEach(stop => stop()); window.removeEventListener('focus', refreshNotes); window.removeEventListener('beforeunload',unload); };
   }, []);
   useEffect(() => {
     if (!searching) return;
     const version = ++searchVersion.current;
     const timer = setTimeout(async () => {
       try {
-        await flush();
+        await flush().catch(() => {});
         const found = await storage.search(query);
         if (version === searchVersion.current) { setResults(found); setSelected(0); }
       } catch (e) { if (version === searchVersion.current) setError(`Could not search notes: ${String(e)}`); }
@@ -299,7 +400,7 @@ export default function App() {
   }
   const RichEditor=richComponent || MarkdownEditor;
   const modifier = navigator.platform.includes('Mac') ? '⌘' : 'Ctrl';
-  return <main>
+  return <main className={sticky ? "sticky-note" : undefined}>
     <nav inert={installing} className="titlebar" aria-label="Note tabs" data-tauri-drag-region><div className="tabs">{data.tabs.map(id => {
       const note = data.notes.find(n => n.id === id)!;
       return <div className={`tab ${id === data.active ? 'active' : ''}`} key={id}>
@@ -308,24 +409,27 @@ export default function App() {
       </div>;
     })}</div><button className="new" disabled={!ready} onClick={create} title={`New note (${modifier}+N / ${modifier}+T)`} aria-label="New note">+</button>
       <div className="titlebar-drag" data-tauri-drag-region title="Drag to move · double-click to maximize" />
+      {desktop && !sticky && <button className="open-sticky" onClick={() => {
+        void invoke('open_bnote_window', { sticky: true }).catch(reason => setError(String(reason)));
+      }}>Open Sticky Note</button>}
       <button className="search-button" disabled={!ready} onClick={() => setSearching(true)} aria-label="Search all notes" title={`Search all notes (${modifier}+K)`}><svg viewBox="0 0 20 20"><circle cx="8" cy="8" r="5.5"/><path d="m12 12 5 5"/></svg></button>
-      <WindowControls onError={setError}/>
+      {!sticky && <WindowControls onError={setError}/>}
     </nav>
     {!desktop && <div className="preview">Browser preview · stored in this browser only. The desktop app uses SQLite.</div>}
-    {error && <div className="error" role="alert">{error} <button onClick={() => void flush().catch(() => {})} disabled={!ready}>Retry save</button></div>}
+    {error && <div className="error" role="alert">{error} {conflict ? <button onClick={() => saveConflictCopy(conflict)}>Save edits as new note</button> : <button onClick={() => void flush().catch(() => {})} disabled={!ready}>Retry save</button>}</div>}
     {fileError && <div className="file-error" role="alert">{fileError}<button aria-label="Dismiss file error" onClick={()=>setFileError('')}><Icon name="close"/></button></div>}
     <input ref={fileInput} className="sr-only" type="file" tabIndex={-1} aria-label="Choose file to open" onChange={event=>void browserFile(event.target.files?.[0])}/>
-    <section inert={installing} className="editor"><div ref={toolbar} className="note-heading" role="toolbar" aria-label="Note actions">
+    <section inert={installing} className="editor">{!sticky && <div ref={toolbar} className="note-heading" role="toolbar" aria-label="Note actions">
       <FileMenu ready={ready} busy={fileBusy} modifier={modifier} onNew={create} onOpen={()=>void openFile()} onSave={()=>void saveAs()}/>
       <ViewMenu ready={ready} wordWrap={wordWrap} onToggle={()=>{setWordWrap(!wordWrap);persistPreference('word-wrap',String(!wordWrap));}}/>
       <button className="icon-button render-toggle" disabled={!ready} aria-label="Render Markdown" title={renderMarkdown ? 'Turn Markdown rendering off' : 'Turn Markdown rendering on'} aria-pressed={renderMarkdown} onClick={toggleMarkdown}><Icon name="markdown"/></button>
       <SettingsMenu disabled={!ready || fileBusy || installing} onOpen={()=>setSettingsOpen(true)} onUpdates={()=>{setSettingsOpen(false);setSearching(false);setUpdateOpen(true);}}/>
-    </div>
+    </div>}
     {active && fileInfo[active.id]?.unsupported && <div className="file-notice" role="status">File unsupported as text. Showing a readable ASCII preview or recovered text{fileInfo[active.id].truncated ? ' (first 64 KiB)' : ''}. Saving exports this displayed text.</div>}
     <span className="sr-only" role="status">{fileStatus}</span>
       {active && (richEnabled ? <Suspense fallback={<p className="editor-loading" role="status">Loading Markdown editor…</p>}><RichEditor key={active.id} noteId={active.id} initialCommand={pendingCommand.current} onRenderRequested={()=>{setRenderMarkdown(true);try{localStorage.setItem('bbb-notes-render-markdown','true');}catch{ /* Session preference remains available. */ }}} ref={markdownEditor} content={active.content} wordWrap={wordWrap} render={renderMarkdown} theme={theme} zoom={zoom} onChange={editContent} initialPosition={positions.current.get(active.id)} initialMatch={pendingMatch.current}/></Suspense> : <textarea key={active.id} ref={editor} wrap={wordWrap ? 'soft' : 'off'} style={{whiteSpace:wordWrap ? 'pre-wrap' : 'pre',overflowWrap:wordWrap ? 'anywhere' : 'normal'}} aria-label="Note content" spellCheck={false} placeholder="Paste something. Catch a thought.\nIt’ll be here when you come back." value={active.content} onKeyDown={completePlainPair} onChange={e => editContent(e.target.value)}/>)}
     </section>
-    <footer><span className={error ? 'failed' : ''}><i/> {status}</span><span>{active?.content.length.toLocaleString() || 0} characters · {data.tabs.length} open {data.tabs.length === 1 ? 'note' : 'notes'}</span><span><button className="zoom-reset" title="Reset editor zoom (Ctrl+0)" aria-label="Reset editor zoom" onClick={()=>setZoom(100)}>{zoom}%</button> · {modifier}+N / T new · {modifier}+K search</span></footer>
+    {sticky ? <footer><span role="status">{status}</span><button disabled={!ready || installing} onClick={() => void openInEditor()}>Open in Editor</button></footer> : <footer><span className={error ? 'failed' : ''}><i/> {status}</span><span>{active?.content.length.toLocaleString() || 0} characters · {data.tabs.length} open {data.tabs.length === 1 ? 'note' : 'notes'}</span><span><button className="zoom-reset" title="Reset editor zoom (Ctrl+0)" aria-label="Reset editor zoom" onClick={()=>setZoom(100)}>{zoom}%</button> · {modifier}+N / T new · {modifier}+K search</span></footer>}
     {updateOpen && <UpdateDialog onClose={closeUpdates} beforeInstall={beforeInstall} onFailure={installFailed}/>}
     {settingsOpen && <Settings theme={theme} onTheme={setTheme} onClose={closeSettings}/>}
     {exportDialog && <div className="overlay" onMouseDown={event=>{if(event.target===event.currentTarget)setExportDialog(null);}}><form className="settings-panel export-panel" role="dialog" aria-modal="true" aria-label="Save note as" onKeyDown={event=>{

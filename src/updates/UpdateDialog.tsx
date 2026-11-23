@@ -35,7 +35,7 @@ export function UpdateDialog({onClose,beforeInstall,onFailure}:{onClose():void;b
       await pending.install({restartAfterInstall:true});await updates.restart();
     }catch(reason){onFailure();if(mounted.current){setError(String(reason));setPhase('error');}}
   }
-  const titles:Record<Phase,string>={checking:'Checking for updates…',unconfigured:'Updates aren’t configured yet',unsupported:'Updates are available in the desktop app',current:'You’re up to date',available:`bbb-notepad ${update.current?.version || ''} is available`,downloading:'Downloading update…',installing:'Saving notes and installing…',error:'Could not complete the update'};
+  const titles:Record<Phase,string>={checking:'Checking for updates…',unconfigured:'Updates aren’t configured yet',unsupported:'Updates are available in the desktop app',current:'You’re up to date',available:`bnote ${update.current?.version || ''} is available`,downloading:'Downloading update…',installing:'Saving notes and installing…',error:'Could not complete the update'};
   return <div className="overlay update-overlay" onMouseDown={event=>{if(event.target===event.currentTarget && !busy)onClose();}}>
     <section ref={panel} className="settings-panel update-panel" role="dialog" aria-modal="true" aria-label="Check for updates" aria-busy={phase==='checking' || busy} onKeyDown={event=>{
       if(event.key==='Escape'){event.preventDefault();event.stopPropagation();if(!busy)onClose();}

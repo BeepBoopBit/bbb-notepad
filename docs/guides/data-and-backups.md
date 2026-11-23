@@ -27,8 +27,8 @@ ENV masking is presentation only. The database, exported source, and backups can
 ## Make a manual backup on Windows
 
 1. Wait for **All changes saved**.
-2. Close every bbb-notepad window normally.
-3. Confirm that `bbb-notepad.exe` is no longer running in Task Manager.
+2. Close every bnote window normally.
+3. Confirm that `bnote.exe` is no longer running in Task Manager.
 4. Copy the entire `%APPDATA%\dev.bbb.notes\` directory to a separate backup location.
 5. Confirm that the copy contains `notes.sqlite3` and has nonzero size.
 

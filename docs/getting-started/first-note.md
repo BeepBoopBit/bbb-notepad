@@ -4,7 +4,7 @@ Create a note, find it after closing its tab, and confirm that it survives a nor
 
 ## Before you start
 
-Install the local Windows beta installer and open **bbb-notepad**. If you do not have an installer, follow [Releasing](../../RELEASING.md) to build one.
+Install the local Windows beta installer and open **bnote**. If you do not have an installer, follow [Releasing](../../RELEASING.md) to build one.
 
 The browser preview uses separate storage.
 
@@ -29,7 +29,7 @@ The original text reopens. Closing a tab retains the note in search.
 
 1. Wait for **All changes saved**.
 2. Close the app with its window close button.
-3. Open **bbb-notepad** again.
+3. Open **bnote** again.
 
 The open note and its text should return. If the app reports a save error, keep it open and use [save-error recovery](../guides/troubleshooting.md#changes-are-not-saved).
 

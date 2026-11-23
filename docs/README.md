@@ -1,4 +1,4 @@
-# bbb-notepad documentation
+# bnote documentation
 
 These pages describe the `0.1.0-beta` working tree and local Windows beta build. They distinguish implemented behavior from planned work. Public hosting and beta update distribution are not configured.
 

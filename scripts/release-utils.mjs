@@ -20,7 +20,7 @@ export function setVersion(root,input){
   const version=validVersion(input);
   for(const file of ['package.json','package-lock.json','src-tauri/tauri.conf.json']){const data=read(root,file);data.version=version;if(file==='package-lock.json')data.packages[''].version=version;write(root,file,data);}
   const cargo=path.join(root,'src-tauri/Cargo.toml');fs.writeFileSync(cargo,fs.readFileSync(cargo,'utf8').replace(/^(version\s*=\s*")[^"]+(".*)$/m,`$1${version}$2`));
-  const lock=path.join(root,'src-tauri/Cargo.lock');if(fs.existsSync(lock))fs.writeFileSync(lock,fs.readFileSync(lock,'utf8').replace(/(\[\[package\]\]\r?\nname = "bbb-notepad"\r?\nversion = ")[^"]+/,`$1${version}`));
+  const lock=path.join(root,'src-tauri/Cargo.lock');if(fs.existsSync(lock))fs.writeFileSync(lock,fs.readFileSync(lock,'utf8').replace(/(\[\[package\]\]\r?\nname = "bnote"\r?\nversion = ")[^"]+/,`$1${version}`));
   return version;
 }
 export function configureRepository(root,input){
@@ -30,8 +30,9 @@ export function configureRepository(root,input){
 }
 export function createManifest(root,repository,artifacts,notes=''){
   const version=releaseVersion(root),repo=repositoryName(repository);
-  const matches=fs.readdirSync(artifacts).filter(name=>name.startsWith(`bbb-notepad_${version}_`) && name.endsWith('_x64-setup.exe'));
-  if(matches.length!==1)throw new Error(`Expected exactly one bbb-notepad ${version} x64 installer in ${artifacts}.`);
+  const {productName}=read(root,'src-tauri/tauri.conf.json');
+  const matches=fs.readdirSync(artifacts).filter(name=>name.startsWith(`${productName}_${version}_`) && name.endsWith('_x64-setup.exe'));
+  if(matches.length!==1)throw new Error(`Expected exactly one ${productName} ${version} x64 installer in ${artifacts}.`);
   const name=matches[0],signature=fs.readFileSync(path.join(artifacts,name+'.sig'),'utf8').trim();if(!signature)throw new Error('Installer signature is empty.');
   return {version,notes,pub_date:new Date().toISOString(),platforms:{'windows-x86_64':{signature,url:`https://github.com/${repo}/releases/download/${encodeURIComponent('v'+version)}/${encodeURIComponent(name)}`}}};
 }

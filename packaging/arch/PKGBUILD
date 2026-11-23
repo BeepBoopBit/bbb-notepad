@@ -1,0 +1,26 @@
+# Build from packaging/arch in a local bnote checkout.
+pkgname=bnote
+pkgver=0.2.2_beta
+pkgrel=1
+pkgdesc='A desktop notepad with a floating scratch note'
+arch=('x86_64')
+url='https://github.com/BeepBoopBit/bbb-notepad'
+license=('MIT')
+depends=('webkit2gtk-4.1' 'gtk3')
+makedepends=('nodejs' 'npm' 'cargo')
+options=(!lto)
+
+build() {
+  cd "$startdir/../.."
+  npm ci
+  CARGO_TARGET_DIR="$PWD/src-tauri/target" npm run tauri -- build --no-bundle --ci
+}
+
+package() {
+  cd "$startdir/../.."
+  install -Dm755 src-tauri/target/release/bnote "$pkgdir/usr/bin/bnote"
+  install -Dm644 -t "$pkgdir/usr/share/applications" packaging/arch/*.desktop
+  install -Dm644 src-tauri/icons/128x128.png "$pkgdir/usr/share/icons/hicolor/128x128/apps/dev.bbb.notes.png"
+  install -Dm644 packaging/arch/bnote.lua "$pkgdir/usr/share/doc/bnote/hyprland.lua"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/bnote/LICENSE"
+}
