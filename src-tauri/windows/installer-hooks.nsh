@@ -6,6 +6,10 @@ Var MigratedLegacyBnote
   Push $1
   ReadRegStr $0 HKCU "${LEGACY_BNOTE_UNINSTALL_KEY}" "InstallLocation"
   ${If} $0 != ""
+    StrCpy $1 $0 1
+    ${If} $1 == '$\"'
+      StrCpy $0 $0 -1 1
+    ${EndIf}
     ; Use the old uninstaller to clean up its shortcuts and registration.
     ; Silent uninstall leaves app data alone unless deletion is requested.
     ClearErrors

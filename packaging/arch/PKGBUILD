@@ -1,6 +1,6 @@
 # Build from packaging/arch in a local bnote checkout.
 pkgname=bnote
-pkgver=0.2.2_beta
+pkgver=0.2.2_beta.1
 pkgrel=1
 pkgdesc='A desktop notepad with a floating scratch note'
 arch=('x86_64')

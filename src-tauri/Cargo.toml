@@ -1,6 +1,6 @@
 [package]
 name = "bnote"
-version = "0.2.2-beta"
+version = "0.2.2-beta.1"
 edition = "2021"
 license = "MIT"
 

@@ -288,7 +288,7 @@ dependencies = [
 
 [[package]]
 name = "bnote"
-version = "0.2.2-beta"
+version = "0.2.2-beta.1"
 dependencies = [
  "encoding_rs",
  "rusqlite",

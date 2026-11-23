@@ -2,7 +2,7 @@
 
 User-visible changes to bnote. Local builds and published releases are distinguished explicitly.
 
-## 0.2.2-beta
+## 0.2.2-beta.1
 
 - Renamed the desktop app to bnote and added native Arch packaging for the floating sticky window and tiled editor.
 - Added independent sticky and editor tab sessions with shared search and an Open in Editor action.

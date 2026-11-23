@@ -9,7 +9,7 @@
   A local desktop app for the notes, ideas, values, and prompts I use each day.
 </p>
 <p align="center">
-  <a href="CHANGELOG.md">Version 0.2.2-beta</a> ·
+  <a href="CHANGELOG.md">Version 0.2.2-beta.1</a> ·
   <a href="docs/development/validation.md">Windows x64 validated</a>
 </p>
 

@@ -18,7 +18,7 @@ function Install-App($installer, $arguments) {
 
 function Start-App($product) {
     $install = Get-ItemProperty -LiteralPath (Join-Path $uninstallKey $product)
-    Start-Process (Join-Path $install.InstallLocation "$product.exe") -PassThru
+    Start-Process (Join-Path ($install.InstallLocation.Trim('"')) "$product.exe") -PassThru
 }
 
 function Wait-ForDatabase($process, $schemaVersion) {

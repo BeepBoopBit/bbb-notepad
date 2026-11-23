@@ -1,6 +1,6 @@
 # Build and release bnote
 
-Use this procedure to produce a signed Windows installer and prepare a release. The public repository is [BeepBoopBit/bbb-notepad](https://github.com/BeepBoopBit/bbb-notepad). The next version is `0.2.2-beta`; committing or pushing it does not publish a release.
+Use this procedure to produce a signed Windows installer and prepare a release. The public repository is [BeepBoopBit/bbb-notepad](https://github.com/BeepBoopBit/bbb-notepad). The next version is `0.2.2-beta.1`; committing or pushing it does not publish a release.
 
 ## Release scope
 
@@ -16,8 +16,8 @@ Run from the project root with Node.js 24 and Rust installed:
 
 ```sh
 npm ci
-npm run release:version -- 0.2.2-beta
-npm run release:verify -- v0.2.2-beta
+npm run release:version -- 0.2.2-beta.1
+npm run release:verify -- v0.2.2-beta.1
 ```
 
 The version helper updates package.json, package-lock.json, Cargo.toml, Cargo.lock, and Tauri configuration. Verification checks the primary package/native versions and optional tag. Keep all generated changes together.
@@ -53,8 +53,8 @@ Expected outputs for this version:
 
 ```text
 src-tauri/target/release/bnote.exe
-src-tauri/target/release/bundle/nsis/bnote_0.2.2-beta_x64-setup.exe
-src-tauri/target/release/bundle/nsis/bnote_0.2.2-beta_x64-setup.exe.sig
+src-tauri/target/release/bundle/nsis/bnote_0.2.2-beta.1_x64-setup.exe
+src-tauri/target/release/bundle/nsis/bnote_0.2.2-beta.1_x64-setup.exe.sig
 ```
 
 The build must finish successfully and produce both the installer and its nonempty signature. A missing signing key is a build error. Close running copies normally before replacing the executable used for local testing.
@@ -101,11 +101,11 @@ After a successful build, generate a manifest if the chosen release channel will
 npm run release:manifest -- BeepBoopBit/bbb-notepad src-tauri/target/release/bundle/nsis CHANGELOG.md latest.json
 ```
 
-The helper requires the installer and matching signature for the current version. It writes the version, notes, publication timestamp, platform key, signature, and versioned GitHub installer URL. For this beta, that URL uses tag `v0.2.2-beta`.
+The helper requires the installer and matching signature for the current version. It writes the version, notes, publication timestamp, platform key, signature, and versioned GitHub installer URL. For this beta, that URL uses tag `v0.2.2-beta.1`.
 
 Upload the setup executable and matching `.exe.sig` to a draft release. Upload `latest.json` only according to the intended channel policy. A manifest attached to a beta release does not make the stable feed discover it.
 
-Mark `v0.2.2-beta` as a **prerelease**. Review the download, notes, and signatures before publishing. Keep prior release assets available for clients that still reference them.
+Mark `v0.2.2-beta.1` as a **prerelease**. Review the download, notes, and signatures before publishing. Keep prior release assets available for clients that still reference them.
 
 ## CI and release triggers
 
